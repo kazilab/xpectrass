@@ -1,0 +1,11 @@
+sphinx>=4.0
+sphinx_rtd_theme>=1.0
+myst-parser>=0.18
+numpy
+scipy
+pandas
+polars
+pybaselines
+PyWavelets
+matplotlib
+scikit-learn
