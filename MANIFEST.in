@@ -2,7 +2,7 @@ include LICENSE
 include README.md
 include pyproject.toml
 
-recursive-include xpectrass *.py *.pyi py.typed
+recursive-include xpectrass *.py *.pyi py.typed *.csv.xz
 recursive-include docs *.md *.rst *.py *.txt
 
 prune docs/_build

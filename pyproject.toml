@@ -100,13 +100,12 @@ Issues = "https://github.com/kazilab/xpectrass/issues"
 Changelog = "https://github.com/kazilab/xpectrass/blob/main/CHANGELOG.md"
 
 [tool.setuptools]
-packages = ["xpectrass", "xpectrass.utils"]
-
-[tool.setuptools.package-dir]
-xpectrass = "."
+# Automatically discover all packages in xpectrass
+packages = {find = {include = ["xpectrass*"]}}
 
 [tool.setuptools.package-data]
 xpectrass = ["py.typed"]
+"xpectrass.data" = ["*.csv.xz"]
 
 [tool.black]
 line-length = 88

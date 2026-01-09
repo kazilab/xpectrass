@@ -51,13 +51,13 @@ setup(
     },
     license="MIT",
     
-    # Package discovery - current directory is the xpectrass package
-    packages=["xpectrass", "xpectrass.utils"],
-    package_dir={"xpectrass": "."},
+    # Package discovery - automatically find all packages
+    packages=find_packages(include=["xpectrass", "xpectrass.*"]),
     
     # Package data (include non-Python files)
     package_data={
         "xpectrass": ["py.typed"],  # PEP 561 marker
+        "xpectrass.data": ["*.csv.xz"],  # Include compressed datasets
     },
     include_package_data=True,
     
