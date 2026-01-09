@@ -1,0 +1,22 @@
+/* Custom CSS for xpectrass documentation */
+
+/* Make code blocks more readable */
+.highlight {
+    background: #f8f8f8;
+    border: 1px solid #e1e4e8;
+    border-radius: 3px;
+}
+
+/* Improve table styling */
+.rst-content table.docutils {
+    border: 1px solid #e1e4e8;
+}
+
+.rst-content table.docutils th {
+    background-color: #f6f8fa;
+}
+
+/* Better spacing for admonitions */
+.admonition {
+    margin: 1em 0;
+}
