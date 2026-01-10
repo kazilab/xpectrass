@@ -52,12 +52,6 @@ except ImportError:
     LIGHTGBM_AVAILABLE = False
 
 try:
-    import catboost as cb
-    CATBOOST_AVAILABLE = True
-except ImportError:
-    CATBOOST_AVAILABLE = False
-
-try:
     import shap
     SHAP_AVAILABLE = True
 except ImportError:
@@ -361,9 +355,32 @@ def get_all_models():
     # ========== LINEAR MODELS ==========
     models['Logistic Regression'] = LogisticRegression(max_iter=1000, random_state=42, n_jobs=-1)
     models['Ridge Classifier'] = RidgeClassifier(random_state=42)
+    
+    # L2 regularization (Ridge-style) - performs feature selection
+    models['Logistic Regression (Ridge)'] = LogisticRegression(
+        penalty='l2', solver='saga', max_iter=1000, random_state=42, n_jobs=-1
+    )
+
+    # L1 regularization (Lasso-style) - performs feature selection
+    models['Logistic Regression (Lasso)'] = LogisticRegression(
+        penalty='l1', solver='saga', max_iter=1000, random_state=42, n_jobs=-1
+    )
+
+    # ElasticNet regularization (L1 + L2) - feature selection + handles multicollinearity
+    models['Logistic Regression (ElasticNet)'] = LogisticRegression(
+        penalty='elasticnet', solver='saga', l1_ratio=0.5, max_iter=1000, random_state=42, n_jobs=-1
+    )
+
     models['Linear Discriminant Analysis'] = LinearDiscriminantAnalysis()
-    models['Quadratic Discriminant Analysis'] = QuadraticDiscriminantAnalysis()
+    models['Quadratic Discriminant Analysis'] = QuadraticDiscriminantAnalysis(solver='eigen', shrinkage='auto')
+
+    # SGD variants with different penalties
     models['SGD Classifier'] = SGDClassifier(max_iter=1000, random_state=42, n_jobs=-1)
+    models['SGD Classifier (Ridge)'] = SGDClassifier(penalty='l2', max_iter=1000, random_state=42, n_jobs=-1)
+    models['SGD Classifier (Lasso)'] = SGDClassifier(penalty='l1', max_iter=1000, random_state=42, n_jobs=-1)
+    models['SGD Classifier (ElasticNet)'] = SGDClassifier(
+        penalty='elasticnet', l1_ratio=0.15, max_iter=1000, random_state=42, n_jobs=-1
+    )
     
     # ========== TREE-BASED MODELS ==========
     models['Decision Tree'] = DecisionTreeClassifier(random_state=42)
@@ -375,9 +392,7 @@ def get_all_models():
     
     # ========== BOOSTING MODELS ==========
     models['AdaBoost'] = AdaBoostClassifier(n_estimators=100, random_state=42)
-    models['Gradient Boosting (50)'] = GradientBoostingClassifier(n_estimators=50, random_state=42)
-    models['Gradient Boosting (100)'] = GradientBoostingClassifier(n_estimators=100, random_state=42)
-    models['Gradient Boosting (200)'] = GradientBoostingClassifier(n_estimators=200, random_state=42)
+    models['Gradient Boosting'] = GradientBoostingClassifier(random_state=42)
     
     if XGBOOST_AVAILABLE:
         models['XGBoost (50)'] = xgb.XGBClassifier(n_estimators=50, random_state=42, n_jobs=-1, eval_metric='mlogloss')
@@ -388,11 +403,6 @@ def get_all_models():
         models['LightGBM (50)'] = lgb.LGBMClassifier(n_estimators=50, random_state=42, n_jobs=-1, verbose=-1)
         models['LightGBM (100)'] = lgb.LGBMClassifier(n_estimators=100, random_state=42, n_jobs=-1, verbose=-1)
         models['LightGBM (200)'] = lgb.LGBMClassifier(n_estimators=200, random_state=42, n_jobs=-1, verbose=-1)
-    
-    if CATBOOST_AVAILABLE:
-        models['CatBoost (50)'] = cb.CatBoostClassifier(iterations=50, random_state=42, verbose=0)
-        models['CatBoost (100)'] = cb.CatBoostClassifier(iterations=100, random_state=42, verbose=0)
-        models['CatBoost (200)'] = cb.CatBoostClassifier(iterations=200, random_state=42, verbose=0)
     
     # ========== SUPPORT VECTOR MACHINES ==========
     models['Linear SVM'] = LinearSVC(max_iter=2000, random_state=42)
@@ -1500,15 +1510,6 @@ def tune_top_models(data_dict, results_df, top_n=3):
             }
             model = lgb.LGBMClassifier(random_state=42, n_jobs=-1, verbose=-1)
             
-        elif 'CatBoost' in model_name and CATBOOST_AVAILABLE:
-            param_grid = {
-                'iterations': [100, 200, 300],
-                'depth': [4, 6, 8, 10],
-                'learning_rate': [0.01, 0.05, 0.1],
-                'l2_leaf_reg': [1, 3, 5, 7]
-            }
-            model = cb.CatBoostClassifier(random_state=42, verbose=0)
-            
         elif 'Gradient Boosting' in model_name:
             param_grid = {
                 'n_estimators': [100, 200, 300],
@@ -1912,7 +1913,7 @@ def explain_model_shap(
     tree_models = [
         'RandomForestClassifier', 'ExtraTreesClassifier',
         'GradientBoostingClassifier', 'XGBClassifier',
-        'LGBMClassifier', 'CatBoostClassifier',
+        'LGBMClassifier',
         'DecisionTreeClassifier'
     ]
 

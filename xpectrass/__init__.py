@@ -33,7 +33,7 @@ Modules
 - data : Bundled datasets (6 FTIR datasets from various studies)
 """
 
-__version__ = "0.0.2"
+__version__ = "0.0.3"
 __author__ = "Data Analysis Team @KaziLab.se"
 __email__ = "xpectrass@kazilab.se"
 __license__ = "MIT"
