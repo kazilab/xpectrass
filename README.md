@@ -7,7 +7,7 @@ A comprehensive Python toolkit for FTIR spectral data preprocessing, analysis, a
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Documentation Status](https://readthedocs.org/projects/xpectrass/badge/?version=latest)](https://xpectrass.readthedocs.io/)
-[![Version](https://img.shields.io/badge/version-0.0.2-green)](https://github.com/kazilab/xpectrass)
+[![Version](https://img.shields.io/badge/version-0.0.3-green)](https://github.com/kazilab/xpectrass)
 
 ## Overview
 
@@ -210,7 +210,7 @@ print(f"F1 Score: {tuned.iloc[0]['best_f1']:.4f}")
 
 **20+ Classification Algorithms:**
 - Ensemble: Random Forest, Extra Trees, AdaBoost, Gradient Boosting
-- Boosting: XGBoost, LightGBM, CatBoost (multiple configurations)
+- Boosting: XGBoost, LightGBM (multiple configurations)
 - SVM: Linear, RBF, Polynomial kernels
 - Linear: Logistic Regression, Ridge, SGD
 - Neighbors: K-Nearest Neighbors (multiple K values)
@@ -310,7 +310,6 @@ sphinx-build -b html . _build/html
 - scikit-learn ≥ 1.0.0
 - XGBoost ≥ 1.5.0
 - LightGBM ≥ 3.3.0
-- CatBoost ≥ 1.0.0
 - UMAP-learn ≥ 0.5.0
 - SHAP ≥ 0.41.0
 
@@ -425,7 +424,11 @@ Built with ❤️ by the Data Analysis Team @KaziLab.se
 
 ## Version History
 
-### v0.0.2 (Current)
+### v0.0.3 (Current)
+- Removed CatBoost dependency for simpler installation
+- Bug fixes and stability improvements
+
+### v0.0.2
 - Complete documentation overhaul
 - Added `FTIRdataprocessing` and `FTIRdataanalysis` classes
 - 6 bundled FTIR datasets
