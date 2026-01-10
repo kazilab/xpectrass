@@ -28,16 +28,33 @@ xpectrass (Spectral Analysis Suite) provides a complete preprocessing pipeline f
 ### Quick Start
 
 ```python
-from xpectrass.preprocessing_pipeline import create_preprocessor
-from xpectrass.utils import process_batch_files
+from xpectrass import FTIRdataprocessing
+from xpectrass.data import load_jung_2018, get_data_info
 
-# Load FTIR data
-files = glob.glob('data/*.csv')
+# See available datasets
+print(get_data_info())
+
+# Load a dataset
+df = load_jung_2018()
+print(f"Loaded {len(df)} spectra")
+
+# Start preprocessing
+ftir = FTIRdataprocessing(df, label_column="type")
+
+Your data:
+from xpectrass import FTIRdataprocessing
+from xpectrass.utils import process_batch_files
+import glob
+import pandas as pd
+
+# Load single CSV file
+df = pd.read_csv("ftir_data.csv", index_col=0)
+
+# Or load multiple files
+files = glob.glob('data/plastics/*.csv')
 df = process_batch_files(files)
 
-# Create and apply preprocessing pipeline
-pipe = create_preprocessor('standard')
-processed = pipe.fit_transform(df)
+print(f"Loaded {len(df)} spectra with {len(df.columns)-1} wavenumbers")
 ```
 
 ### Installation
