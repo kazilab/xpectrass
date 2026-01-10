@@ -25,7 +25,7 @@ if readme_path.exists():
     long_description = readme_path.read_text(encoding="utf-8")
 
 # Read version from package
-version = "0.0.2"
+version = "0.0.3"
 try:
     with open(here / "xpectrass" / "__init__.py", "r") as f:
         for line in f:
