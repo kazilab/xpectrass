@@ -74,7 +74,6 @@ The library includes **20+ classification algorithms** across multiple families:
 **Ensemble Models:**
 - XGBoost (multiple configs)
 - LightGBM (multiple configs)
-- CatBoost (multiple configs)
 
 **Naive Bayes:**
 - Gaussian Naive Bayes
