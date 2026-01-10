@@ -374,7 +374,7 @@ def get_all_models():
     models['Extra Trees (200)'] = ExtraTreesClassifier(n_estimators=200, random_state=42, n_jobs=-1)
     
     # ========== BOOSTING MODELS ==========
-    models['AdaBoost'] = AdaBoostClassifier(n_estimators=100, random_state=42, algorithm='SAMME')
+    models['AdaBoost'] = AdaBoostClassifier(n_estimators=100, random_state=42)
     models['Gradient Boosting (50)'] = GradientBoostingClassifier(n_estimators=50, random_state=42)
     models['Gradient Boosting (100)'] = GradientBoostingClassifier(n_estimators=100, random_state=42)
     models['Gradient Boosting (200)'] = GradientBoostingClassifier(n_estimators=200, random_state=42)
