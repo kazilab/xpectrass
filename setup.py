@@ -40,7 +40,7 @@ setup(
     version=version,
     author="Data Analysis Team @KaziLab.se",
     author_email="xpectrass@kazilab.se",
-    description="FTIR/ToF-SIMS Spectral Analysis Suite - Preprocessing toolkit for spectral classification",
+    description="FTIR Spectral Analysis Suite - Preprocessing toolkit for spectral classification",
     long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/kazilab/xpectrass",
@@ -67,36 +67,58 @@ setup(
     # Dependencies
     install_requires=[
         # Core scientific computing
-        "numpy>=1.20.0",
-        "scipy>=1.7.0",
-        "pandas>=1.3.0",
-        "polars>=0.15.0",
+        "numpy==2.3.5",
+        "scipy==1.16.3",
+        "pandas==2.3.3",
+        "polars==1.37.0",
 
         # Signal processing and preprocessing
-        "pybaselines>=1.0.0",
-        "PyWavelets>=1.1.0",
+        "pybaselines==1.2.1",
+        "PyWavelets==1.9.0",
 
         # Visualization
-        "matplotlib>=3.4.0",
-        "seaborn>=0.11.0",
+        "matplotlib==3.10.8",
+        "seaborn==0.13.2",
+        "plotly==6.5.1",
 
         # Machine learning - core
-        "scikit-learn>=1.0.0",
+        "scikit-learn==1.8.0",
 
         # Machine learning - boosting
-        "xgboost>=1.5.0",
-        "lightgbm>=3.3.0",
-        "catboost>=1.0.0",
+        "xgboost==3.1.3",
+        "lightgbm==4.6.0",
 
         # Dimensionality reduction
-        "umap-learn>=0.5.0",
+        "umap-learn==0.5.9.post2",
 
         # Model explainability
-        "shap>=0.41.0",
+        "shap==0.50.0",
 
         # Utilities
-        "tqdm>=4.60.0",
-        "joblib>=1.0.0",
+        "tqdm==4.67.1",
+        "joblib==1.5.3",
+        
+        # Other
+        "cloudpickle==3.1.2",
+        "contourpy==1.3.3",
+        "cycler==0.12.1",
+        "et-xmlfile==2.0.0",
+        "fonttools==4.61.1",
+        "graphviz==0.21",
+        "kiwisolver==1.4.9",
+        "llvmlite==0.46.0",
+        "narwhals==2.15.0",
+        "numba==0.63.1",
+        "pillow==12.1.0",
+        "polars-runtime-32==1.37.0",
+        "pynndescent==0.6.0",
+        "pyparsing==3.3.1",
+        "pytz==2025.2",
+        "openpyxl==3.1.5",
+        "slicer==0.0.8",
+        "threadpoolctl==3.6.0",
+        "typing-extensions==4.15.0",
+        "tzdata==2025.3",
     ],
     
     # Optional dependencies
@@ -153,7 +175,6 @@ setup(
         "preprocessing",
         "baseline correction",
         "plastic classification",
-        "ToF-SIMS",
         "chemometrics",
         "machine learning",
         "PCA",
