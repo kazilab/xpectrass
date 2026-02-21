@@ -2,14 +2,6 @@
 
 ---
 
-## Authors
-
-**Author 1** [Corresponding Author]
-Data Analysis Team, KaziLab.se
-Email: xpectrass@kazilab.se
-
----
-
 ## Abstract
 
 Fourier-Transform Infrared (FTIR) spectroscopy is a powerful analytical technique widely used for material identification, quality control, and environmental monitoring. However, the preprocessing and analysis of FTIR spectral data require significant expertise and involve multiple complex steps including baseline correction, denoising, normalization, and classification. We present **Xpectrass**, an open-source Python library that provides a comprehensive, end-to-end pipeline for FTIR spectral data preprocessing, statistical analysis, and machine learning classification. Xpectrass implements an evaluation-first methodology that enables researchers to systematically compare and select optimal preprocessing parameters using quantitative metrics. The library includes over 50 baseline correction methods, 7 denoising algorithms, 17+ normalization techniques, and 20+ machine learning classifiers with model explainability via SHAP values. Additionally, Xpectrass bundles six published FTIR datasets for benchmarking and reproducible research. The software is designed to be accessible to both novice users through sensible defaults and expert users through extensive customization options. Xpectrass is freely available under the MIT license and aims to democratize access to advanced FTIR spectral analysis methods.
@@ -663,57 +655,7 @@ Future development will focus on expanding the bundled dataset collection, imple
 
 ---
 
-## Acknowledgments
-
-[To be completed by authors]
-
----
-
-## Author Contributions
-
-**CRediT Author Statement:**
-
-[To be completed by authors - example format below]
-
-**Author 1:** Conceptualization, Methodology, Software, Writing – Original Draft, Writing – Review & Editing
-
----
-
-## Declaration of Competing Interests
-
-The authors declare that they have no known competing financial interests or personal relationships that could have appeared to influence the work reported in this paper.
-
----
-
-## References
-
-[1] Griffiths, P.R., de Haseth, J.A. (2007). Fourier Transform Infrared Spectrometry (2nd ed.). Wiley-Interscience.
-
-[2] Stuart, B.H. (2004). Infrared Spectroscopy: Fundamentals and Applications. Wiley.
-
-[3] Araujo, C.F., Nolasco, M.M., Ribeiro, A.M.P., Ribeiro-Claro, P.J.A. (2018). Identification of microplastics using Raman spectroscopy: Latest developments and future prospects. Water Research, 142, 426-440.
-
-[4] Xu, J.L., Thomas, K.V., Luo, Z., Gowen, A.A. (2019). FTIR and Raman imaging for microplastics analysis: State of the art, challenges and prospects. TrAC Trends in Analytical Chemistry, 119, 115629.
-
-[5] Rinnan, Å., van den Berg, F., Engelsen, S.B. (2009). Review of the most common pre-processing techniques for near-infrared spectra. TrAC Trends in Analytical Chemistry, 28(10), 1201-1222.
-
-[6] Gerretzen, J., Szymańska, E., Jansen, J.J., Bart, J., van Manen, H.J., van den Heuvel, E.R., Buydens, L.M.C. (2015). Simple and effective way for data preprocessing selection based on design of experiments. Analytical Chemistry, 87(24), 12096-12103.
-
-[7] Erb, D. (2022). pybaselines: A Python library of algorithms for the baseline correction of experimental data. GitHub repository. https://github.com/derb12/pybaselines
-
-[8] Jung, M.R., Horgen, F.D., Orski, S.V., Rodriguez, V., Beers, K.L., Balazs, G.H., Jones, T.T., Work, T.M., Brignac, K.C., Royer, S.J., Hyrenbach, K.D., Jensen, B.A., Lynch, J.M. (2018). Validation of ATR FT-IR to identify polymers of plastic marine debris, including those ingested by marine organisms. Marine Pollution Bulletin, 127, 704-716.
-
-[9] Kedzierski, M., Falcou-Préfol, M., Kerber, M., Henry, M., Pedrotti, M.L., Bruzaud, S. (2019). A machine learning algorithm for high throughput identification of FTIR spectra: Application on microplastics collected in the Mediterranean Sea. Chemosphere, 234, 242-251.
-
-[10] De Frond, H., Rubin, E., Chelazzi, D., Cincinelli, A., Mejanelle, L., Liboiron, M., Prata, J.C., Scholz-Böttcher, B.M., Shen, M., Sintes, M., Völker, C., Amaral-Zettler, L.A., Bank, M.S., Brown, D., Brander, S.M., Coffin, S., Cole, M., Dunaev, T., Fechner, L.C., Heydebreck, F., Holland, E.R., Koelmans, A.A., Mintenig, S., Munier, B., Munno, K., Napper, I.E., Orro, K., Palardy, J.E., Pham, C.K., Primpke, S., Quarino, L., Rochman, C.M., Weiss, L., Zettler, E.R., Hammoud, S.A. (2021). Standardized protocol for ATR-FTIR spectroscopy verification of microplastic polymer types. Marine Pollution Bulletin, 165, 112134.
-
-[11] Villegas-Camacho, A., Ramirez-Nunez, A.L., Medina-Ramirez, I.E., Silva-Martinez, S., Cardenas-Chavez, D.L. (2024). Machine Learning approach for microplastic FTIR identification in aquatic environments. Chemosphere, 348, 140772.
-
----
-
-## Supplementary Material
-
-### Table S1: Complete List of Baseline Correction Methods
+Complete List of Baseline Correction Methods
 
 | Method | Category | Key Parameters |
 |--------|----------|----------------|
@@ -737,7 +679,7 @@ The authors declare that they have no known competing financial interests or per
 | corner_cutting | Spline | max_iter |
 | ... | ... | ... |
 
-### Table S2: Machine Learning Model Configurations
+Machine Learning Model Configurations
 
 | Model | Default Parameters |
 |-------|-------------------|
@@ -750,8 +692,4 @@ The authors declare that they have no known competing financial interests or per
 | ... | ... |
 
 ---
-
-*Manuscript prepared for submission to [Journal Name]*
-
-*Word count: ~5,500 (main text, excluding equations and tables)*
 
