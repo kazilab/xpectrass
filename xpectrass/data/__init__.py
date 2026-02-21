@@ -15,7 +15,7 @@ Available Datasets
 
 Example Usage
 -------------
->>> from xpectrass_v002.data import (
+>>> from xpectrass.data import (
 ...     load_frond_2021,
 ...     load_jung_2018,
 ...     load_kedzierski_2019,
@@ -247,8 +247,8 @@ def load_datasets(datasets: Optional[list] = None) -> Dict[str, pd.DataFrame]:
 
     loader_map = {
         'jung_2018': load_jung_2018,
-        'kedzierski_2019': load_kedzierski_2019(),
-        'kedzierski_2019_u': load_kedzierski_2019_u(),
+        'kedzierski_2019': load_kedzierski_2019,
+        'kedzierski_2019_u': load_kedzierski_2019_u,
         'frond_2021': load_frond_2021,
         'villegas_camacho_2024_c4': load_villegas_camacho_2024_c4,
         'villegas_camacho_2024_c8': load_villegas_camacho_2024_c8,
@@ -302,7 +302,7 @@ def get_data_info() -> Dict[str, dict]:
 __all__ = [
     'load_jung_2018',
     'load_kedzierski_2019',
-    'load_kedzierski_2019_u'
+    'load_kedzierski_2019_u',
     'load_frond_2021',
     'load_villegas_camacho_2024_c4',
     'load_villegas_camacho_2024_c8',
