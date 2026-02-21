@@ -11,8 +11,8 @@ sys.path.insert(0, os.path.abspath('..'))
 project = 'xpectrass'
 copyright = '2026 @KaziLab.se'
 author = 'Data Analysis Team @KaziLab.se'
-version = '0.0.2'
-release = '0.0.2'
+version = '0.0.4'
+release = '0.0.4'
 
 # General configuration
 extensions = [

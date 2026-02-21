@@ -2,7 +2,7 @@
 
 For the complete version history, see the [main CHANGELOG.md](https://github.com/kazilab/xpectrass/blob/main/CHANGELOG.md) on GitHub.
 
-## Latest Release: v0.0.2 (2026-01-09)
+## Latest Release: v0.0.4 (2026-02-12)
 
 ### Major Features
 
