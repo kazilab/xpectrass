@@ -7,7 +7,7 @@ A comprehensive Python toolkit for FTIR spectral data preprocessing, analysis, a
 [![Python Version](https://img.shields.io/badge/python-3.8%2B-blue)](https://www.python.org/downloads/)
 [![License](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
 [![Documentation Status](https://readthedocs.org/projects/xpectrass/badge/?version=latest)](https://xpectrass.readthedocs.io/)
-[![Version](https://img.shields.io/badge/version-0.0.3-green)](https://github.com/kazilab/xpectrass)
+[![Version](https://img.shields.io/badge/version-0.0.4-green)](https://github.com/kazilab/xpectrass)
 
 ## Overview
 
@@ -70,40 +70,94 @@ pip install -e ".[dev]"
 
 ## Quick Start
 
-### Basic Preprocessing Workflow
+### Option 1: Use Bundled Datasets
+
+Xpectrass comes with 6 pre-loaded FTIR plastic datasets:
 
 ```python
 from xpectrass import FTIRdataprocessing
-from xpectrass.data import load_jung_2018
+from xpectrass.data import load_jung_2018, get_data_info
 
-# Load bundled dataset
+# See available datasets
+print(get_data_info())
+
+# Load a dataset
 df = load_jung_2018()
 
-# Initialize preprocessing pipeline
+# Remove duplicate spectra
+df = df.drop_duplicates(subset=['sample_id'])
+print(f"Loaded {len(df)} spectra")
+
+# Start preprocessing
+ftir = FTIRdataprocessing(df, label_column="type")
+```
+
+### Option 2: Load Your Own Data
+
+```python
+from xpectrass import FTIRdataprocessing
+from xpectrass.utils import process_batch_files
+import glob
+import pandas as pd
+
+# Load single CSV file
+df = pd.read_csv("ftir_data.csv", index_col=0)
+
+# Or load multiple files
+files = glob.glob('data/plastics/*.csv')
+df = process_batch_files(files)
+
+print(f"Loaded {len(df)} spectra with {len(df.columns)-1} wavenumbers")
+```
+
+**Data Format:**
+- Rows: Individual spectra
+- Columns: One label column + wavenumber columns (e.g., "400.0", "401.0", ...)
+- Index: Sample names or IDs
+
+Example CSV structure:
+```
+sample_id,type,400.0,401.0,402.0,...,4000.0
+HDPE_001,HDPE,0.123,0.125,0.128,...,0.045
+PP_001,PP,0.098,0.102,0.105,...,0.038
+```
+
+## Basic Preprocessing Workflow
+
+### Step-by-Step Approach
+
+```python
+from xpectrass import FTIRdataprocessing
+
+# Initialize
 ftir = FTIRdataprocessing(
     df,
-    label_column="type",
-    wn_min=400,
-    wn_max=4000
+    label_column="type",  # Name of your label column
+    wn_min=400,           # Minimum wavenumber
+    wn_max=4000           # Maximum wavenumber
 )
 
-# Step 1: Convert to absorbance
+# Step 1: Convert to absorbance (if data is in transmittance)
 ftir.convert(mode="to_absorbance", plot=True)
 
-# Step 2: Remove atmospheric interference
+# Step 2: Evaluate and apply denoising
+ftir.find_denoising_method(n_samples=50, plot=True)
+ftir.denoise_spect(method="savgol", window_length=15)
+
+# Step 3: Evaluate and apply baseline correction
+ftir.find_baseline_method(n_samples=50, plot=True)
+ftir.plot_rfzn_nar_snr(metric_name="SNR")  # Visualize evaluation metrics
+ftir.correct_baseline(method="asls", plot=False)
+
+# Step 4: Remove atmospheric interference (CO₂, H₂O)
 ftir.exclude_interpolate(method="spline", plot=True)
 
-# Step 3: Evaluate and apply best baseline correction
-ftir.find_baseline_method(n_samples=50, plot=True)
-ftir.correct_baseline(method="asls", plot=True)
-
-# Step 4: Evaluate and apply best denoising
-ftir.find_denoising_method(n_samples=50, plot=True)
-ftir.denoise_spect(method="savgol")
-
 # Step 5: Evaluate and apply normalization
-ftir.find_normalization_method(plot=True)
+ftir.find_normalization_method()
 ftir.normalize(method="snv")
+
+# Step 6: Compare all processing stages
+ftir.plot_multiple_spec()
 
 # Get processed data
 processed_df = ftir.df_norm
@@ -111,75 +165,68 @@ processed_df = ftir.df_norm
 
 ### Quick Run with Defaults
 
+For rapid prototyping:
+
 ```python
-# Run entire pipeline with sensible defaults
 ftir = FTIRdataprocessing(df, label_column="type")
+
+# Run entire pipeline with default settings
 ftir.run()
+
+# Get final processed data
 processed_df = ftir.df_norm
 ```
 
-### Analysis and Machine Learning
+## Basic Analysis Workflow
+
+After preprocessing, use `FTIRdataanalysis` for visualization and machine learning:
 
 ```python
 from xpectrass import FTIRdataanalysis
 
+LABEL_COLUMN = "type"
+MIN_SAMPLE_NUMBER_FOR_GROUP = 10
+# remove small groups from processed data
+processed_df = processed_df.dropna(subset=[LABEL_COLUMN])
+group_counts=processed_df[LABEL_COLUMN].value_counts()
+valid_groups = group_counts[group_counts >= MIN_SAMPLE_NUMBER_FOR_GROUP].index
+processed_df = processed_df[processed_df[LABEL_COLUMN].isin(valid_groups)]
+
 # Initialize analysis
-analysis = FTIRdataanalysis(processed_df, label_column="type")
+analysis = FTIRdataanalysis(processed_df, label_column=LABEL_COLUMN)
 
-# Visualization
-analysis.plot_mean_spectra(by_class=True)
-analysis.plot_pca(n_components=3)
+# Visualize mean spectra by class
+analysis.plot_mean_spectra()
+
+# Plot spectral heatmap
+analysis.plot_heatmap()
+
+# Dimensionality reduction
+analysis.plot_pca()
 analysis.plot_tsne()
+analysis.plot_umap()
 
-# Machine Learning
-analysis.ml_prepare_data(test_size=0.2)
-results = analysis.run_all_models()
-
-# Show top 5 models
-print(results.nlargest(5, 'f1_score')[['model', 'accuracy', 'f1_score']])
-
-# Tune best models
-tuned = analysis.model_parameter_tuning(top_n=3)
-
-# Explain with SHAP
-analysis.explain_by_shap(model_name='XGBoost (100)', X=analysis.X_test_scaled)
+# Statistical analysis
+analysis.perform_anova()
+analysis.plot_correlation()
 ```
 
-## Complete Example
+## Machine Learning
 
 ```python
-from xpectrass import FTIRdataprocessing, FTIRdataanalysis
-from xpectrass.data import load_jung_2018
+# Prepare data for ML
+analysis.ml_prepare_data()
 
-# 1. Load data
-df = load_jung_2018()
-print(f"Loaded {len(df)} spectra with {df['type'].nunique()} polymer types")
-
-# 2. Preprocessing
-ftir = FTIRdataprocessing(df, label_column="type")
-ftir.convert(mode="to_absorbance")
-ftir.exclude_interpolate(method="spline")
-ftir.find_baseline_method(n_samples=50)
-ftir.correct_baseline(method="asls")
-ftir.find_denoising_method(n_samples=50)
-ftir.denoise_spect(method="savgol")
-ftir.normalize(method="snv")
-
-# Compare all processing stages
-ftir.plot_multiple_spec(sample="HDPE_001")
-
-# 3. Analysis
-analysis = FTIRdataanalysis(ftir.df_norm, label_column="type")
-analysis.plot_pca(n_components=3)
-analysis.perform_anova()
-
-# 4. Machine Learning
-analysis.ml_prepare_data(test_size=0.2)
+# Run all classification models
 results = analysis.run_all_models()
-tuned = analysis.model_parameter_tuning(top_n=1)
+print(results.sort_values('test_f1', ascending=False))
 
-print(f"\nBest model: {tuned.iloc[0]['model']}")
-print(f"F1 Score: {tuned.iloc[0]['best_f1']:.4f}")
+# Tune top performing models
+tuned_results = analysis.model_parameter_tuning()
+
+# Explain model predictions with SHAP
+analysis.explain_by_shap()
+analysis.local_shap_plot()
 ```
 
 ## Main Features
@@ -423,6 +470,10 @@ pytest
 Built with ❤️ by the Data Analysis Team @KaziLab.se
 
 ## Version History
+
+### v0.0.4 (Current)
+- Fixed documentation
+- Bug fixes and stability improvements
 
 ### v0.0.3 (Current)
 - Removed CatBoost dependency for simpler installation
