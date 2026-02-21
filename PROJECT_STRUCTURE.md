@@ -284,38 +284,6 @@ pytest
 pytest --cov=xpectrass --cov-report=html
 ```
 
-## Recommended Next Steps
-
-### High Priority
-1. ✅ **Move tests to root level** – COMPLETED
-2. **Add test data** (Optional): Create `tests/data/` with small test datasets; currently tests may use bundled datasets from `xpectrass/data/`
-
-### Medium Priority
-3. **Add GitHub badges to README** – Build status, coverage, PyPI version, ReadTheDocs
-4. **Create release checklist** – Version update procedure, testing, documentation
-
-### Low Priority
-5. Add CODE_OF_CONDUCT.md
-6. Add SECURITY.md for vulnerability reporting
-7. Create issue labels in GitHub
-8. Set up Codecov for coverage tracking
-
-## Publication Checklist
-
-Before publishing to PyPI:
-- [x] CHANGELOG.md created
-- [x] CONTRIBUTING.md created
-- [x] GitHub Actions CI/CD configured
-- [x] Documentation complete and builds successfully
-- [x] All tests pass
-- [x] Version numbers updated (e.g. 0.0.4)
-- [x] Tests at root level
-- [x] py.typed in `xpectrass/` (PEP 561)
-- [ ] Final code review
-- [ ] Tag release on GitHub
-- [ ] Verify ReadTheDocs builds
-- [ ] PyPI upload (manual or via GitHub Actions)
-
 ## Support and Contact
 
 - **Email**: xpectrass@kazilab.se
