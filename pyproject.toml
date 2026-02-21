@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "xpectrass"
-version = "0.0.3"
+version = "0.0.4"
 description = "FTIR/ToF-SIMS Spectral Analysis Suite - Preprocessing toolkit for spectral classification"
 readme = "README.md"
 license = {text = "MIT"}
