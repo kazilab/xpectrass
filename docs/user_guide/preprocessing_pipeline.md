@@ -98,7 +98,7 @@ Remove CO₂ and H₂O interference:
 ```python
 # Exclude and interpolate atmospheric regions
 ftir.exclude_interpolate(
-    method="spline",      # "spline", "linear", "polynomial"
+    method="spline",      # "interpolate", "spline", "reference", "zero", "exclude"
     plot=True
 )
 
@@ -113,6 +113,7 @@ atm_corrected = ftir.df_atm
 ```python
 # Evaluate all baseline methods on sample spectra
 ftir.find_baseline_method(
+    data=ftir.df_atm,
     n_samples=50,         # Number of spectra to test
     plot=True             # Show evaluation plots
 )
@@ -136,6 +137,7 @@ ftir.plot_rfzn_nar_snr()
 ```python
 # Apply baseline correction
 ftir.correct_baseline(
+    data=ftir.df_atm,
     method="asls",        # or "airpls", "arpls", etc.
     plot=True,
     **kwargs              # Method-specific parameters
@@ -159,6 +161,7 @@ baseline_corrected = ftir.df_corr
 ```python
 # Evaluate denoising methods
 ftir.find_denoising_method(
+    data=ftir.df_corr,
     n_samples=50,
     plot=True
 )
@@ -175,6 +178,7 @@ ftir.plot_denoising_eval()
 ```python
 # Apply denoising
 ftir.denoise_spect(
+    data=ftir.df_corr,
     method="savgol",      # See available methods below
     window_length=15,     # Odd integer
     polyorder=3,          # For Savitzky-Golay
@@ -190,9 +194,9 @@ denoised = ftir.df_denoised
 - `wavelet`: Wavelet denoising
 - `gaussian`: Gaussian smoothing
 - `median`: Median filter
-- `bilateral`: Bilateral filter
-- `wiener`: Wiener filter
-- `fft`: FFT-based filtering
+- `moving_average`: Moving average filter
+- `whittaker`: Whittaker smoothing
+- `lowpass`: Low-pass filtering
 
 ### 5. Normalization
 
@@ -200,13 +204,14 @@ denoised = ftir.df_denoised
 
 ```python
 # Evaluate normalization methods
-ftir.find_normalization_method(
-    n_samples=50,
-    plot=True
+norm_results = ftir.find_normalization_method(
+    data=ftir.df_denoised,
+    methods="FTIR",
+    n_splits=5,
 )
 
 # View results
-print(ftir.norm_eval_results)
+print(norm_results.head())
 ```
 
 #### Step 5b: Apply Normalization
@@ -214,6 +219,7 @@ print(ftir.norm_eval_results)
 ```python
 # Apply normalization
 ftir.normalize(
+    data=ftir.df_denoised,
     method="snv",         # See methods below
     plot=False
 )
@@ -229,7 +235,7 @@ normalized = ftir.df_norm
 - `area`: Area normalization
 - `peak`: Peak normalization
 - `pqn`: Probabilistic Quotient Normalization
-- `entropy`: Entropy-weighted normalization
+- `entropy_weighted`: Entropy-weighted normalization
 
 ### 6. Spectral Derivatives
 
@@ -238,7 +244,7 @@ Calculate first or second derivatives:
 ```python
 # Calculate first derivative
 ftir.derivatives(
-    derivative_type="first",   # "first", "second", or "gap"
+    order=1,                   # 1 = first derivative
     window_length=15,          # Smoothing window
     polyorder=3,               # Polynomial order
     plot=True
@@ -265,8 +271,7 @@ ftir.plot()
 ```python
 # Compare all stages for a specific sample
 ftir.plot_multiple_spec(
-    sample="Sample_001",      # Sample name
-    figsize=(15, 12)
+    sample="Sample_001"       # Sample name
 )
 ```
 
@@ -328,23 +333,24 @@ print("Step 2: Removing atmospheric interference...")
 ftir.exclude_interpolate(method="spline", plot=False)
 
 print("Step 3: Evaluating baseline methods...")
-ftir.find_baseline_method(n_samples=100, plot=True)
+ftir.find_baseline_method(data=ftir.df_atm, n_samples=100, plot=True)
 ftir.plot_rfzn_nar_snr()
 
 print("Step 4: Applying best baseline correction...")
-ftir.correct_baseline(method="asls", plot=False)
+ftir.correct_baseline(data=ftir.df_atm, method="asls", plot=False)
 
 print("Step 5: Evaluating denoising methods...")
-ftir.find_denoising_method(n_samples=100, plot=True)
+ftir.find_denoising_method(data=ftir.df_corr, n_samples=100, plot=True)
 
 print("Step 6: Applying denoising...")
-ftir.denoise_spect(method="savgol", window_length=15)
+ftir.denoise_spect(data=ftir.df_corr, method="savgol", window_length=15)
 
 print("Step 7: Evaluating normalization methods...")
-ftir.find_normalization_method(plot=True)
+norm_results = ftir.find_normalization_method(data=ftir.df_denoised, methods="FTIR", n_splits=5)
+print(norm_results.head())
 
 print("Step 8: Applying normalization...")
-ftir.normalize(method="snv")
+ftir.normalize(data=ftir.df_denoised, method="snv")
 
 # Compare processing stages
 ftir.plot_multiple_spec(sample="HDPE_001")
@@ -366,10 +372,12 @@ For quick testing with default parameters:
 ftir.run()
 
 # This executes:
-# 1. Atmospheric correction
-# 2. Baseline correction (airpls)
-# 3. Denoising (savgol)
-# 4. Normalization (snv)
+# 1. Convert to absorbance
+# 2. Denoising (savgol)
+# 3. Baseline correction (asls)
+# 4. Atmospheric correction (spline)
+# 5. Normalization (vector)
+# 6. Derivatives (0th to 3rd)
 ```
 
 ## Advanced Features

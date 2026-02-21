@@ -124,9 +124,8 @@ from xpectrass.utils import plot_derivatives
 
 plot_derivatives(
     intensities,
-    wavenumbers,
+    wavenumbers=wavenumbers,
     orders=[0, 1, 2],  # Original, 1st, 2nd
-    sample_name='HDPE1'
 )
 ```
 
@@ -144,6 +143,7 @@ wavenumbers = np.linspace(400, 4000, 3751)
 d2 = spectral_derivative(intensities, order=2, window_length=17)
 
 # Find peaks (minima in 2nd derivative)
-peak_indices = np.where(d2[1:-1] < d2[:-2]) & (d2[1:-1] < d2[2:])
-peak_wavenumbers = wavenumbers[1:-1][peak_indices]
+peak_mask = (d2[1:-1] < d2[:-2]) & (d2[1:-1] < d2[2:])
+peak_indices = np.where(peak_mask)[0] + 1
+peak_wavenumbers = wavenumbers[peak_indices]
 ```

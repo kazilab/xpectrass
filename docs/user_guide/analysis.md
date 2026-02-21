@@ -34,9 +34,13 @@ FTIRdataanalysis(
     df,                      # Preprocessed DataFrame
     dataset_name=None,       # Dataset identifier for plots
     label_column="type",     # Label column name
+    sample_id_column="sample_id",  # Sample ID column name
     exclude_columns=None,    # Additional non-spectral columns
+    start_wn=None,           # Minimum wavenumber (not yet implemented)
+    end_wn=None,             # Maximum wavenumber (not yet implemented)
+    drop_region=None,        # Wavenumber region to drop (not yet implemented)
     random_state=None,       # Random seed for reproducibility
-    n_jobs=-1               # Parallel processing cores
+    n_jobs=-1                # Parallel processing cores
 )
 ```
 
@@ -49,9 +53,8 @@ Visualize average spectra for each polymer type:
 ```python
 # Plot mean spectra for all classes
 analysis.plot_mean_spectra(
-    by_class=True,           # Separate by class
-    show_std=True,           # Show standard deviation bands
-    figsize=(12, 6),
+    title="Mean Spectra by Type",  # Plot title
+    figsize=(16, 12),
     save_plot=False,
     save_path=None
 )
@@ -69,9 +72,10 @@ Compare mean spectra across classes:
 ```python
 # Overlay all class means
 analysis.plot_overlay_spectra(
-    normalize=True,          # Normalize for comparison
-    offset=0.0,              # Vertical offset between spectra
-    figsize=(12, 8)
+    title="Mean Spectra overlay",  # Plot title
+    figsize=(16, 12),
+    save_plot=False,
+    save_path=None
 )
 ```
 
@@ -82,10 +86,9 @@ Visualize all spectra as a heatmap:
 ```python
 # Create heatmap ordered by class
 analysis.plot_heatmap(
-    cluster=False,           # Don't cluster samples
-    cmap='viridis',          # Colormap
-    figsize=(14, 10),
-    save_plot=False
+    figsize=(16, 12),
+    save_plot=False,
+    save_path=None
 )
 ```
 
@@ -102,8 +105,10 @@ Identify variable and stable spectral regions:
 ```python
 # Plot CV by class
 analysis.plot_cv(
-    by_class=True,           # Separate CV for each class
-    figsize=(12, 6)
+    title="Spectral Variability by Type",  # Plot title
+    figsize=(16, 12),
+    save_plot=False,
+    save_path=None
 )
 ```
 
@@ -119,24 +124,16 @@ Test for significant differences between classes:
 
 ```python
 # Perform ANOVA at each wavenumber
-anova_results = analysis.perform_anova(
-    plot=True,               # Plot significant regions
-    alpha=0.05,              # Significance level
-    figsize=(12, 6)
+analysis.perform_anova(
+    figsize=(16, 12),
+    save_plot=False,
+    save_path=None
 )
-
-print(f"Significant wavenumbers: {anova_results['n_significant']}")
-print(f"P-values shape: {anova_results['p_values'].shape}")
 ```
-
-**Output:**
-- `p_values`: P-value at each wavenumber
-- `n_significant`: Number of significant wavenumbers
-- `significant_wn`: List of significant wavenumber positions
 
 **Plot shows:**
 - -log10(p-value) across spectrum
-- Horizontal line at significance threshold
+- Significance threshold line
 - Regions where classes differ significantly
 
 ### Correlation Matrix
@@ -146,9 +143,9 @@ Visualize correlations between wavenumbers:
 ```python
 # Plot correlation matrix
 analysis.plot_correlation(
-    method='pearson',        # 'pearson' or 'spearman'
-    figsize=(10, 8),
-    cmap='coolwarm'
+    figsize=(16, 12),
+    save_plot=False,
+    save_path=None
 )
 ```
 
@@ -163,30 +160,21 @@ analysis.plot_correlation(
 
 ```python
 # Perform PCA
-pca_results = analysis.plot_pca(
-    n_components=3,          # Number of PCs to plot
-    plot_loadings=True,      # Show PC loadings
-    plot_scree=True,         # Show scree plot
-    figsize=(15, 10),
-    save_plot=False
+analysis.plot_pca(
+    standardize=True,        # Standardize features before PCA
+    handle_missing="zero",   # How to handle missing values
+    figsize=(16, 12),
+    save_plot=False,
+    save_path=None
 )
 ```
 
-**Returns:**
-- `pca_model`: Fitted PCA model
-- `scores`: PC scores for all samples
-- `loadings`: PC loadings (wavenumber contributions)
-- `explained_variance`: Variance explained by each PC
-
 **Plots generated:**
 1. **2D scatter**: PC1 vs PC2 colored by class
-2. **3D scatter**: PC1 vs PC2 vs PC3 (if n_components ≥ 3)
-3. **Loadings plot**: Shows which wavenumbers contribute to each PC
-4. **Scree plot**: Variance explained by each component
+2. **Explained variance plot**: Variance explained by each component
 
 **Interpretation:**
 - Well-separated clusters = good class discrimination
-- PC loadings show important spectral features
 - Explained variance indicates information retention
 
 ### t-SNE (t-Distributed Stochastic Neighbor Embedding)
@@ -195,11 +183,13 @@ Non-linear dimensionality reduction for visualization:
 
 ```python
 # Perform t-SNE
-tsne_results = analysis.plot_tsne(
-    perplexity=30,           # Balance local vs global structure (5-50)
-    n_iter=1000,             # Number of iterations
-    learning_rate=200,       # Step size
-    figsize=(10, 8)
+analysis.plot_tsne(
+    pca_components=20,       # Number of PCA components for pre-reduction
+    standardize=True,        # Standardize features
+    handle_missing="zero",   # How to handle missing values
+    figsize=(16, 12),
+    save_plot=False,
+    save_path=None
 )
 ```
 
@@ -219,11 +209,13 @@ Modern non-linear dimensionality reduction:
 
 ```python
 # Perform UMAP
-umap_results = analysis.plot_umap(
-    n_neighbors=15,          # Local neighborhood size (2-100)
-    min_dist=0.1,            # Minimum distance between points (0.0-0.99)
-    metric='euclidean',      # Distance metric
-    figsize=(10, 8)
+analysis.plot_umap(
+    pca_components=20,       # Number of PCA components for pre-reduction
+    standardize=True,        # Standardize features
+    handle_missing="zero",   # How to handle missing values
+    figsize=(16, 12),
+    save_plot=False,
+    save_path=None
 )
 ```
 
@@ -247,26 +239,20 @@ Supervised dimensionality reduction:
 
 ```python
 # Perform PLS-DA
-plsda_results = analysis.plot_plsda(
-    n_components=3,          # Number of latent variables
-    cv_folds=5,              # Cross-validation folds
-    plot_scores=True,        # Plot score plot
-    plot_loadings=True,      # Plot loadings
-    figsize=(15, 10)
+analysis.plot_plsda(
+    n_components=20,         # Number of latent variables
+    standardize=True,        # Standardize features
+    handle_missing="zero",   # How to handle missing values
+    figsize=(16, 12),
+    save_plot=False,
+    save_path=None
 )
 ```
 
-**Returns:**
-- `model`: Fitted PLS-DA model
-- `scores`: LV scores
-- `loadings`: Variable loadings
-- `cv_scores`: Cross-validation scores
-- `vip_scores`: Variable Importance in Projection
-
 **Best for:**
-- Supervised classification
+- Supervised classification and dimensionality reduction
 - Feature importance analysis
-- Regression tasks
+- Maximizing class separation
 
 ### OPLS-DA (Orthogonal PLS-DA)
 
@@ -274,10 +260,14 @@ Enhanced PLS-DA with orthogonal signal correction:
 
 ```python
 # Perform OPLS-DA
-oplsda_results = analysis.plot_oplsda(
+analysis.plot_oplsda(
     n_components=1,          # Predictive components
     n_orthogonal=2,          # Orthogonal components
-    figsize=(12, 8)
+    standardize=True,        # Standardize features
+    handle_missing="zero",   # How to handle missing values
+    figsize=(16, 12),
+    save_plot=False,
+    save_path=None
 )
 ```
 
@@ -294,24 +284,21 @@ Partition spectra into K clusters:
 
 ```python
 # Perform K-means clustering
-kmeans_results = analysis.plot_kmeans_clus(
-    n_clusters=5,            # Number of clusters
-    plot_elbow=True,         # Show elbow plot for K selection
-    max_k=10,                # Maximum K for elbow plot
-    figsize=(15, 8)
+analysis.plot_kmeans_clus(
+    n_components_clustering=10,  # PCA components for clustering
+    k_range=(2, 11),         # Range of K values to evaluate
+    standardize=True,        # Standardize features
+    handle_missing="zero",   # How to handle missing values
+    figsize=(16, 12),
+    save_plot=False,
+    save_path=None
 )
 ```
-
-**Returns:**
-- `model`: Fitted K-means model
-- `labels`: Cluster assignments
-- `inertia`: Sum of squared distances
-- `silhouette_score`: Cluster quality metric
 
 **Plots:**
 1. **Cluster scatter**: PCA projection colored by cluster
 2. **Elbow plot**: Helps choose optimal K
-3. **Silhouette plot**: Shows cluster quality
+3. **Silhouette analysis**: Shows cluster quality
 
 **Choosing K:**
 - Look for "elbow" in inertia plot
@@ -324,11 +311,13 @@ Build dendrogram showing sample relationships:
 
 ```python
 # Perform hierarchical clustering
-hclust_results = analysis.plot_hierarchical_clus(
-    method='ward',           # Linkage method
-    metric='euclidean',      # Distance metric
-    figsize=(15, 10),
-    dendrogram_only=False    # Also show clustered heatmap
+analysis.plot_hierarchical_clus(
+    n_samples_dendro=100,    # Max samples in dendrogram
+    standardize=True,        # Standardize features
+    handle_missing="zero",   # How to handle missing values
+    figsize=(16, 12),
+    save_plot=False,
+    save_path=None
 )
 ```
 
@@ -364,44 +353,41 @@ analysis = FTIRdataanalysis(
 
 # 3. Exploratory visualization
 print("Plotting mean spectra...")
-analysis.plot_mean_spectra(by_class=True, show_std=True)
+analysis.plot_mean_spectra()
 
 print("Creating spectral heatmap...")
-analysis.plot_heatmap(cluster=True)
+analysis.plot_heatmap()
 
 print("Calculating coefficient of variation...")
-analysis.plot_cv(by_class=True)
+analysis.plot_cv()
 
 # 4. Statistical analysis
 print("\nPerforming ANOVA...")
-anova_results = analysis.perform_anova(plot=True)
-print(f"Found {anova_results['n_significant']} significant wavenumbers")
+analysis.perform_anova()
 
 # 5. Dimensionality reduction
 print("\nDimensionality reduction analysis:")
 
 print("  - PCA...")
-pca_results = analysis.plot_pca(n_components=3, plot_loadings=True)
-print(f"    Variance explained: {pca_results['explained_variance'][:3]}")
+analysis.plot_pca()
 
 print("  - t-SNE...")
-analysis.plot_tsne(perplexity=30)
+analysis.plot_tsne()
 
 print("  - UMAP...")
-analysis.plot_umap(n_neighbors=15)
+analysis.plot_umap()
 
 print("  - PLS-DA...")
-plsda_results = analysis.plot_plsda(n_components=3, cv_folds=5)
+analysis.plot_plsda()
 
 # 6. Clustering
 print("\nClustering analysis:")
 
 print("  - K-means...")
-kmeans_results = analysis.plot_kmeans_clus(n_clusters=5, plot_elbow=True)
-print(f"    Silhouette score: {kmeans_results['silhouette_score']:.3f}")
+analysis.plot_kmeans_clus()
 
 print("  - Hierarchical...")
-analysis.plot_hierarchical_clus(method='ward')
+analysis.plot_hierarchical_clus()
 
 print("\n✓ Analysis complete!")
 ```
@@ -413,7 +399,6 @@ All plotting methods support saving:
 ```python
 # Save individual plots
 analysis.plot_pca(
-    n_components=3,
     save_plot=True,
     save_path="figures/pca_analysis.png"
 )
@@ -421,8 +406,7 @@ analysis.plot_pca(
 # Save with custom format
 analysis.plot_mean_spectra(
     save_plot=True,
-    save_path="figures/mean_spectra.pdf",  # Supports: png, pdf, svg, eps
-    dpi=300
+    save_path="figures/mean_spectra.pdf"  # Supports: png, pdf, svg, eps
 )
 ```
 

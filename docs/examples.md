@@ -2,243 +2,177 @@
 
 This page provides complete examples for common FTIR preprocessing workflows.
 
-## Example 1: Basic Preprocessing
+## Example 1: Notebook-Style Method Selection
 
-Load data and apply standard preprocessing for classification:
+This mirrors the method-selection workflow used in the notebooks.
 
 ```python
-import glob
-import sys
-sys.path.insert(0, '/path/to/scripts')
+from xpectrass import FTIRdataprocessing, load_villegas_camacho_2024_c4
 
-from xpectrass.utils import process_batch_files, validate_spectra
-from xpectrass.preprocessing_pipeline import create_preprocessor
+dataset = load_villegas_camacho_2024_c4()
+fdp = FTIRdataprocessing(
+    df=dataset,
+    label_column="type",
+    flat_windows=[(1880, 1900), (2400, 2700)],
+)
 
-# Load all plastic spectra
-files = glob.glob('FTIR-PLASTIC-c4/*/*.csv')
-df = process_batch_files(files, show_progress=True)
+# Convert first (transmittance -> absorbance)
+df_abs = fdp.convert(plot=False)
 
-print(f"Loaded {df.height} spectra with {len(df.columns) - 2} wavenumbers")
+# 1) Pick denoising method
+denoise_eval = fdp.find_denoising_method(
+    data=df_abs,
+    methods="FTIR",
+    n_samples=50,
+    plot=False,
+)
+best_denoise = fdp.best_denoising_methods(eval_df=denoise_eval, top_n=5)
+denoise_method = best_denoise.iloc[0]["method"]
 
-# Validate data
-report = validate_spectra(df, verbose=True)
+# 2) Pick baseline correction method
+df_denoised = fdp._get_denoised_data(denoising_method=denoise_method, plot=False)
+rfzn, nar, snr = fdp.find_baseline_method(
+    data=df_denoised,
+    flat_windows=[(1880, 1900), (2400, 2700)],
+    baseline_methods="FTIR",
+    n_samples=50,
+    plot=False,
+)
+best_baseline = fdp.best_baseline_method(
+    rfzn_tbl=rfzn,
+    nar_tbl=nar,
+    snr_tbl=snr,
+    top_n=5,
+)
+baseline_method = best_baseline.iloc[0]["method"]
 
-# Create and apply standard preprocessing
-pipe = create_preprocessor('standard')
-processed = pipe.fit_transform(df)
-
-print("Preprocessing complete!")
+print("Best denoising:", denoise_method)
+print("Best baseline:", baseline_method)
 ```
 
 ---
 
-## Example 2: Custom Pipeline Configuration
-
-Configure each preprocessing step individually:
+## Example 2 Atmospheric + Normalization Workflow
 
 ```python
-from xpectrass.preprocessing_pipeline import FTIRPreprocessor, PreprocessingConfig
-
-# Custom configuration
-config = PreprocessingConfig(
-    # Enable validation
-    validate=True,
-    
-    # Baseline correction with ASLS
-    baseline=True,
-    baseline_params={'method': 'asls', 'lam': 1e7, 'p': 0.01},
-    
-    # Wavelet denoising
-    denoise=True,
-    denoise_params={'method': 'wavelet', 'wavelet': 'db4', 'level': 3},
-    
-    # Vector normalization
-    normalize=True,
-    normalize_params={'method': 'vector'},
-    
-    # Select classification regions
-    region_selection=True,
-    regions=[(400, 1800), (2700, 3100)],
-    
-    # Mean center for PCA
-    mean_center=True
+# Continue from Example 8
+df_atm = fdp._get_atmosphere_corrected_data(
+    denoising_method=denoise_method,
+    baseline_correction_method=baseline_method,
+    interpolate_method="zero",
+    plot=False,
 )
 
-pipe = FTIRPreprocessor(config)
-processed = pipe.fit_transform(df)
+# Rank normalization methods by classification-oriented metrics
+norm_scores = fdp.find_normalization_method(
+    data=df_atm,
+    methods="FTIR",
+    n_splits=5,
+)
+normalization_method = norm_scores.iloc[0]["method"]
+
+# Run full preprocessing with selected methods
+df_norm = fdp._get_normalized_data(
+    denoising_method=denoise_method,
+    baseline_correction_method=baseline_method,
+    interpolate_method="zero",
+    normalization_method=normalization_method,
+    plot=False,
+)
+
+df_norm.to_excel("DenoisedBaselineAtmosphericCorrectedNormalizedData.xlsx", index=False)
+print("Saved normalized data.")
 ```
 
 ---
 
-## Example 3: Evaluating Baseline Methods
-
-Compare baseline correction methods on your data:
+## Example 3: Derivatives + Multi-Dataset Combination
 
 ```python
-from xpectrass.utils import (
-    process_batch_files, baseline_method_names,
-    evaluate_all_samples, plot_metric_boxes
+from xpectrass import FTIRdataprocessing, load_all_datasets, combine_datasets
+
+all_sets = load_all_datasets()
+
+common_kwargs = dict(
+    label_column="type",
+    exclude_regions=[(0, 680), (3500, 5000)],
+    interpolate_regions=[(1250, 2700)],
+    flat_windows=[(1880, 1900), (2400, 2700)],
 )
 
-# Load data
-files = glob.glob('FTIR-PLASTIC-c4/*/*.csv')[:100]  # Subset for speed
-df = process_batch_files(files)
+fdp_jung = FTIRdataprocessing(df=all_sets["jung_2018"], **common_kwargs)
+jung_norm = fdp_jung._get_normalized_data(
+    denoising_method="wavelet",
+    baseline_correction_method="aspls",
+    interpolate_method="zero",
+    normalization_method="snv_detrend",
+    plot=False,
+)
 
-# Define flat regions (known baseline-only areas)
-flat_windows = [(2500, 2600), (3350, 3450)]
+fdp_frond = FTIRdataprocessing(df=all_sets["frond_2021"], **common_kwargs)
+frond_norm = fdp_frond._get_normalized_data(
+    denoising_method="wavelet",
+    baseline_correction_method="aspls",
+    interpolate_method="zero",
+    normalization_method="snv_detrend",
+    plot=False,
+)
 
-# Evaluate all baseline methods
-rfzn, nar, snr = evaluate_all_samples(df, flat_windows)
+# Derivatives
+jung_d1 = fdp_jung.derivatives(data=jung_norm, order=1, window_length=15, polyorder=3, delta=1.0, plot=False)
+jung_d2 = fdp_jung.derivatives(data=jung_norm, order=2, window_length=15, polyorder=3, delta=1.0, plot=False)
 
-# Visualize results
-plot_metric_boxes(rfzn, metric_name="RFZN")
-plot_metric_boxes(nar, metric_name="NAR")
+# Combine normalized datasets on a common grid
+combined_norm, grid = combine_datasets(
+    datasets=[jung_norm, frond_norm],
+    wn_min=680,
+    wn_max=3000,
+    resolution=2.0,
+    descending=True,
+    method="pchip",
+    label_column="type",
+    add_study_column=True,
+    study_names=["jung_2018", "frond_2021"],
+    show_progress=True,
+    n_jobs=4,
+    data_mode="normalized",
+)
 
-# Find best methods
-print("Top 5 methods by RFZN (lower is better):")
-print(rfzn.mean().sort_values().head())
+combined_norm.to_csv("processed_data/combined_norm_data.csv.xz", compression="xz", index=None)
+print("Combined shape:", combined_norm.shape)
 ```
 
 ---
 
-## Example 4: Comparing Denoising Methods
+## Example 4: Notebook-Style Data Analysis Class
 
 ```python
-from xpectrass.utils import (
-    process_batch_files, denoise, denoise_method_names,
-    evaluate_denoising, plot_denoising_comparison,
-    get_wavenumbers, get_spectra_matrix
+import pandas as pd
+from xpectrass import FTIRdataanalysis
+
+df = pd.read_csv("processed_data/combined_deriv1_data.csv.xz", compression="xz")
+df = df[df["study"] != "kedzierski_2019_u"]
+
+fda = FTIRdataanalysis(
+    df=df,
+    dataset_name="Combined dataset",
+    label_column="type",
+    exclude_columns=["study", "sample_id", "environmental", "resolution"],
+    random_state=42,
+    n_jobs=-1,
 )
 
-# Load single sample
-df = process_batch_files(['FTIR-PLASTIC-c4/HDPE_c4/HDPE1.csv'])
-
-wavenumbers = get_wavenumbers(df)
-spectrum = get_spectra_matrix(df)[0]
-
-# Visual comparison
-plot_denoising_comparison(
-    spectrum, wavenumbers,
-    methods=['savgol', 'wavelet', 'gaussian'],
-    sample_name='HDPE1'
+fda.plot_pca(standardize=True, handle_missing="zero", figsize=(12, 8))
+fda.plot_umap(
+    n_neighbors=100,
+    min_dist=0.5,
+    pca_components=20,
+    standardize=True,
+    handle_missing="zero",
+    figsize=(12, 8),
 )
 
-# Quantitative evaluation
-results = evaluate_denoising(df, n_samples=50)
-print(results.groupby('method')[['snr_db', 'fidelity']].mean())
-```
-
----
-
-## Example 5: PCA Preprocessing
-
-Complete preprocessing for PCA analysis:
-
-```python
-from xpectrass.preprocessing_pipeline import create_preprocessor
-from xpectrass.utils import get_spectra_matrix
-from sklearn.decomposition import PCA
-import matplotlib.pyplot as plt
-
-# Load and preprocess
-files = glob.glob('FTIR-PLASTIC-c4/*/*.csv')
-df = process_batch_files(files)
-
-# Use PCA preset (includes 1st derivative)
-pipe = create_preprocessor('pca')
-processed = pipe.fit_transform(df)
-
-# Extract matrix for PCA
-X = get_spectra_matrix(processed)
-labels = processed['label'].to_list()
-
-# Perform PCA
-pca = PCA(n_components=5)
-scores = pca.fit_transform(X)
-
-# Plot
-plt.figure(figsize=(10, 8))
-for label in set(labels):
-    mask = [l == label for l in labels]
-    plt.scatter(scores[mask, 0], scores[mask, 1], label=label, alpha=0.6)
-plt.xlabel(f'PC1 ({pca.explained_variance_ratio_[0]*100:.1f}%)')
-plt.ylabel(f'PC2 ({pca.explained_variance_ratio_[1]*100:.1f}%)')
-plt.legend()
-plt.title('PCA of Preprocessed FTIR Spectra')
-plt.show()
-```
-
----
-
-## Example 6: Classification Pipeline
-
-Complete pipeline for plastic classification:
-
-```python
-from xpectrass.preprocessing_pipeline import create_preprocessor
-from xpectrass.utils import process_batch_files, get_spectra_matrix
-from sklearn.model_selection import train_test_split, cross_val_score
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.metrics import classification_report
-
-# Load data
-files = glob.glob('FTIR-PLASTIC-c4/*/*.csv')
-df = process_batch_files(files)
-
-# Preprocess with classification preset
-pipe = create_preprocessor('classification')
-processed = pipe.fit_transform(df)
-
-# Prepare for sklearn
-X = get_spectra_matrix(processed)
-y = processed['label'].to_list()
-
-# Split data
-X_train, X_test, y_train, y_test = train_test_split(
-    X, y, test_size=0.2, stratify=y, random_state=42
-)
-
-# Train classifier
-clf = RandomForestClassifier(n_estimators=100, random_state=42)
-clf.fit(X_train, y_train)
-
-# Evaluate
-y_pred = clf.predict(X_test)
-print(classification_report(y_test, y_pred))
-
-# Cross-validation
-scores = cross_val_score(clf, X, y, cv=5)
-print(f"CV Accuracy: {scores.mean():.3f} ± {scores.std():.3f}")
-```
-
----
-
-## Example 7: Region Analysis
-
-Analyze important spectral regions for each plastic type:
-
-```python
-from xpectrass.utils import (
-    process_batch_files, analyze_regions, 
-    select_region, FTIR_REGIONS
-)
-
-# Load data
-df = process_batch_files(glob.glob('FTIR-PLASTIC-c4/*/*.csv'))
-
-# Analyze predefined regions
-stats = analyze_regions(df)
-print(stats)
-
-# Custom region analysis
-plastic_regions = [
-    (700, 750),    # CH2 rocking (PE)
-    (1710, 1730),  # Ester C=O (PET)
-    (1370, 1380),  # CH3 symmetric (PP)
-    (690, 760),    # Aromatic (PS)
-    (600, 700),    # C-Cl (PVC)
-]
-
-custom_stats = analyze_regions(df, regions=plastic_regions)
-print(custom_stats)
+data_dict = fda.ml_prepare_data(test_size=0.2)
+single = fda.run_a_model(model_name="XGBoost (100)", cv_folds=5, plot_confusion=True)
+all_results = fda.run_all_models(plot_comparison=True, accuracy_threshold=0.9, top_n_methods=20)
 ```

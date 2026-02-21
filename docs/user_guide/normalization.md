@@ -14,14 +14,22 @@ from xpectrass import FTIRdataprocessing
 # Initialize with your data
 ftir = FTIRdataprocessing(df, label_column="type")
 
+# Convert to absorbance first (normalization expects absorbance-scale spectra)
+df_abs = ftir.convert(mode="to_absorbance", plot=False)
+
 # Step 1: Evaluate all normalization methods to find the best one
-ftir.find_normalization_method(n_samples=50, plot=True)
+norm_results = ftir.find_normalization_method(
+    data=df_abs,
+    methods="FTIR",
+    n_splits=5,
+)
 
 # Step 2: View evaluation results
-print(ftir.norm_eval_results)
+print(norm_results.head())
 
 # Step 3: Apply the best method
-ftir.normalize(method='snv', plot=False)
+best_method = norm_results.iloc[0]["method"]
+ftir.normalize(data=df_abs, method=best_method, plot=False)
 
 # Step 4: Access normalized data
 normalized_df = ftir.df_norm
@@ -36,7 +44,7 @@ from xpectrass.utils import normalize, normalize_method_names
 
 # See available methods
 print(normalize_method_names())
-# ['area', 'max', 'minmax', 'peak', 'range', 'snv', 'vector', 'pqn', 'entropy']
+# e.g. ['adaptive_regional', 'area', 'curvature_weighted', ..., 'snv', 'vector']
 
 # Apply normalization to a single spectrum
 normalized = normalize(intensities, method='snv')
@@ -117,7 +125,7 @@ Essential preprocessing for PCA - centers each variable (wavenumber) across samp
 from xpectrass.utils import mean_center
 
 # Returns centered data and mean for reconstruction
-centered, mean = mean_center(spectra_matrix, axis=0)
+centered, mean = mean_center(spectra_matrix, axis=0, return_mean=True)
 ```
 
 ### Auto-Scaling
@@ -127,7 +135,7 @@ Mean centering + unit variance scaling. Each variable has mean=0, std=1.
 ```python
 from xpectrass.utils import auto_scale
 
-scaled, mean, std = auto_scale(spectra_matrix)
+scaled, mean, std = auto_scale(spectra_matrix, return_params=True)
 ```
 
 ### Pareto Scaling
@@ -137,7 +145,7 @@ Less aggressive than auto-scaling - divides by sqrt(std) instead of std.
 ```python
 from xpectrass.utils import pareto_scale
 
-scaled, mean, std = pareto_scale(spectra_matrix)
+scaled, mean, std = pareto_scale(spectra_matrix, return_params=True)
 ```
 
 ## Detrending
@@ -159,21 +167,27 @@ snv_dt = snv_detrend(intensities, detrend_order=1)
 ### Normalize Multiple Spectra
 
 ```python
-from xpectrass.utils import normalize_batch
+from xpectrass.utils import normalize_df
 
-normalized_matrix = normalize_batch(spectra_matrix, method='snv')
+normalized_matrix = normalize_df(spectra_matrix, method="snv")
 ```
 
 ### DataFrame Operations
 
 ```python
-from xpectrass.utils import normalize_dataframe, mean_center_dataframe
+from xpectrass.utils import normalize_df, mean_center
 
 # Normalize Polars DataFrame
-normalized_df = normalize_dataframe(df, method='snv')
+normalized_df = normalize_df(
+    df,
+    method="snv",
+    label_column="type",
+    exclude_columns=["study", "sample_id", "environmental", "resolution"],
+)
 
-# Mean center DataFrame
-centered_df, mean = mean_center_dataframe(df)
+# Mean-center spectral matrix for PCA
+spectral_cols = [c for c in normalized_df.columns if c not in ["study", "sample_id", "type", "environmental", "resolution"]]
+centered_matrix, mean = mean_center(normalized_df[spectral_cols].to_numpy(), return_mean=True)
 ```
 
 ## Comparison
@@ -201,7 +215,7 @@ centered_df, mean = mean_center_dataframe(df)
 
 ```python
 from xpectrass.utils import (
-    normalize, normalize_batch, mean_center,
+    normalize, normalize_df, mean_center,
     snv_detrend
 )
 import numpy as np
@@ -219,8 +233,8 @@ snv_dt = snv_detrend(spectrum)
 spectra = np.vstack([load_spectrum(f) for f in files])
 
 # Normalize all
-normalized = normalize_batch(spectra, method='snv')
+normalized = normalize_df(spectra, method="snv")
 
 # Mean center for PCA
-centered, mean = mean_center(normalized)
+centered, mean = mean_center(normalized, return_mean=True)
 ```

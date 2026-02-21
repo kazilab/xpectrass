@@ -26,22 +26,24 @@ analysis = FTIRdataanalysis(processed_df, label_column="type", random_state=42)
 ```python
 # Prepare data for machine learning
 analysis.ml_prepare_data(
-    test_size=0.2,           # 20% for testing
-    random_state=42,         # For reproducibility
-    stratify=True            # Maintain class balance
+    test_size=0.2           # 20% for testing
 )
 
 print(f"Training samples: {len(analysis.y_train)}")
 print(f"Test samples: {len(analysis.y_test)}")
-print(f"Features: {analysis.X_train.shape[1]}")
+print(f"Features: {analysis.x_train_scaled.shape[1]}")
 print(f"Classes: {analysis.class_names}")
 ```
 
 **Attributes created:**
-- `X_train`, `X_test`: Feature matrices
+- `x_train_scaled`, `x_test_scaled`: Standardized feature matrices
+- `x_train_raw`, `x_test_raw`: Raw (unscaled) feature matrices
 - `y_train`, `y_test`: Labels
-- `X_train_scaled`, `X_test_scaled`: Standardized features
 - `class_names`: Unique class labels
+- `scaler`: Fitted StandardScaler
+- `label_encoder`: Fitted LabelEncoder
+- `wavenumbers`: Array of wavenumber values
+- `dir_`: Dictionary containing all of the above
 
 ## Available Models
 
@@ -100,17 +102,17 @@ The library includes **20+ classification algorithms** across multiple families:
 
 ```python
 # Run specific model
-result = analysis.run_a_model(
-    model_name='RandomForest',
-    X_train=analysis.X_train_scaled,
-    y_train=analysis.y_train,
-    X_test=analysis.X_test_scaled,
-    y_test=analysis.y_test
+results = analysis.run_a_model(
+    model_name='XGBoost (100)',
+    model=None,
+    cv_folds=5,
+    plot_confusion=True,
+    save_plot_path=None,
+    print_test_result=True
 )
-
-print(f"Accuracy: {result['accuracy']:.3f}")
-print(f"F1 Score: {result['f1_score']:.3f}")
-print(f"Training time: {result['train_time']:.2f}s")
+overall, per_class, confusion_matrix = results
+print(f"Accuracy: {overall['accuracy']:.3f}")
+print(f"F1 (weighted): {overall['f1_weighted']:.3f}")
 ```
 
 ### Run All Models
@@ -120,108 +122,68 @@ Evaluate all available models with cross-validation:
 ```python
 # Run all models
 results = analysis.run_all_models(
-    cv_folds=5,              # 5-fold cross-validation
-    scoring='f1_weighted',   # Scoring metric
-    n_jobs=-1                # Use all CPU cores
+    test_size=0.2,
+    plot_comparison=True,
+    accuracy_threshold=0.9,
+    top_n_methods=20,
+    save_plot_path=None
 )
 
 # View results sorted by F1 score
-print(results.sort_values('f1_score', ascending=False))
+print(results.sort_values('test_f1', ascending=False))
 
 # Save results
 analysis.results_all = results  # Stored for later use
 ```
 
 **Results DataFrame includes:**
-- `model`: Model name
-- `accuracy`: Test set accuracy
-- `precision`: Weighted precision
-- `recall`: Weighted recall
-- `f1_score`: Weighted F1 score
-- `cv_score_mean`: Mean cross-validation score
-- `cv_score_std`: CV standard deviation
+- `model_name`: Model name
+- `test_accuracy`: Test set accuracy
+- `test_precision`: Weighted precision
+- `test_recall`: Weighted recall
+- `test_f1`: Weighted F1 score
+- `y_pred`: Predicted labels
+- `y_proba`: Predicted probabilities
+- `train_accuracy`: Training accuracy
+- `cv_mean`: Mean cross-validation score
+- `cv_std`: CV standard deviation
+- `overfit_gap`: Difference between train and test accuracy
 - `train_time`: Training time (seconds)
-- `predict_time`: Prediction time (seconds)
+- `pred_time`: Prediction time (seconds)
 
 ### View Top Models
 
 ```python
 # Get top 10 models by F1 score
-top_models = results.nlargest(10, 'f1_score')
-print(top_models[['model', 'accuracy', 'f1_score', 'cv_score_mean']])
+top_models = results.nlargest(10, 'test_f1')
+print(top_models[['model_name', 'test_accuracy', 'test_f1', 'cv_mean']])
 ```
 
 ## Model Comparison Visualization
 
-### Plot Model Comparison
+When `plot_comparison=True` (the default), `run_all_models()` automatically generates four visualization plots:
 
-```python
-# Compare all models
-analysis.plot_model_comparison(
-    results=analysis.results_all,
-    metric='f1_score',       # Metric to display
-    top_n=10,                # Show top 10 models
-    figsize=(12, 8)
-)
-```
-
-**Features:**
-- Bar plot of model performance
+### Model Comparison Plot
+- Bar plot of model performance sorted by test accuracy
+- Shows top N models (controlled by `top_n_methods` parameter)
 - Error bars showing CV standard deviation
-- Sorted by selected metric
 - Color-coded by performance
 
-### Plot Family Comparison
+### Family Comparison Plot
+- Average performance per model family (e.g., tree-based vs ensemble vs linear)
+- Violin plots showing distribution within each family
+- Best model in each family highlighted
 
-Compare model families (e.g., tree-based vs ensemble vs linear):
-
-```python
-# Compare model families
-analysis.plot_family_comparison(
-    results=analysis.results_all,
-    figsize=(10, 6)
-)
-```
-
-**Shows:**
-- Average performance per model family
-- Violin plots showing distribution
-- Best model in each family
-
-### Plot Efficiency Analysis
-
-Analyze model trade-offs between accuracy and speed:
-
-```python
-# Efficiency analysis: accuracy vs speed
-analysis.plot_efficiency_analysis(
-    results=analysis.results_all,
-    figsize=(10, 8)
-)
-```
-
-**Features:**
+### Efficiency Analysis Plot
 - Scatter plot: Training time vs F1 score
-- Bubble size represents model complexity
 - Helps identify fast, accurate models
+- Models above the `accuracy_threshold` are highlighted
 
-### Plot Overfitting Analysis
-
-Identify overfitting by comparing train and test performance:
-
-```python
-# Overfitting analysis
-analysis.plot_overfitting_analysis(
-    results=analysis.results_all,
-    figsize=(10, 8)
-)
-```
-
-**Shows:**
-- Train score vs test score
+### Overfitting Analysis Plot
+- Train score vs test score comparison
 - Diagonal line = perfect generalization
-- Points above line = overfitting
-- Points below line = underfitting
+- Points above line indicate overfitting
+- Shows top N models (controlled by `top_n_methods` parameter)
 
 ## Hyperparameter Tuning
 
@@ -230,25 +192,14 @@ analysis.plot_overfitting_analysis(
 Optimize hyperparameters for best-performing models:
 
 ```python
-# Tune top 3 models
+# Tune top 2 models (must run run_all_models() first)
+results = analysis.run_all_models()
 tuned_results = analysis.model_parameter_tuning(
-    top_n=3,                 # Number of top models to tune
-    cv_folds=5,              # Cross-validation folds
-    n_iter=50,               # Iterations for random search
-    scoring='f1_weighted',   # Optimization metric
-    n_jobs=-1                # Use all cores
+    number_of_models=2       # Number of top models to tune
 )
-
-print("\nTuned model results:")
-print(tuned_results[['model', 'best_f1', 'improvement', 'best_params']])
 ```
 
-**Returns:**
-- `model`: Model name
-- `best_f1`: Best F1 score after tuning
-- `improvement`: Improvement over default
-- `best_params`: Optimal hyperparameters
-- `cv_scores`: Cross-validation scores
+> **Note:** You must call `run_all_models()` before `model_parameter_tuning()`, as it relies on `self.results_all` and `self.dir_` being set.
 
 **Tuning Search Spaces:**
 
@@ -270,20 +221,15 @@ Understand which spectral features drive predictions:
 # Explain model predictions with SHAP
 shap_results = analysis.explain_by_shap(
     model_name='XGBoost (100)',  # Model to explain
-    X=analysis.X_test_scaled,     # Data to explain
-    sample_size=100,               # Samples for SHAP values
-    plot=True                      # Create summary plot
+    max_display=20,              # Max features to display in SHAP plots
+    sample_size=100,             # Background samples for SHAP values
+    test_size=0.2,               # Train/test split ratio
+    cv_folds=5,                  # Cross-validation folds
+    save_plot_path=None          # Path to save SHAP plots
 )
 
-# Access SHAP results
-analysis.shap_results = shap_results
+# Results are stored in analysis.shap_results
 ```
-
-**Returns:**
-- `shap_values`: SHAP values for each prediction
-- `explainer`: SHAP explainer object
-- `base_value`: Expected value (baseline)
-- `feature_names`: Wavenumber labels
 
 **Plots generated:**
 1. **Summary plot**: Shows global feature importance
@@ -294,10 +240,12 @@ analysis.shap_results = shap_results
 Explain individual predictions:
 
 ```python
-# Plot decision plots for individual samples
+# Plot decision plot for a single test sample
+# (must call explain_by_shap() first)
 analysis.local_shap_plot(
-    sample_indices=[0, 1, 2],    # Which samples to explain
-    figsize=(12, 8)
+    sample_index=0,              # Index of test sample to explain
+    figsize=(10, 8),
+    save_plot_path=None
 )
 ```
 
@@ -309,6 +257,10 @@ analysis.local_shap_plot(
 ### Feature Importance by Wavenumber
 
 ```python
+import numpy as np
+import pandas as pd
+import matplotlib.pyplot as plt
+
 # Get feature importance as DataFrame
 importance_df = pd.DataFrame({
     'wavenumber': analysis.wavenumbers,
@@ -346,57 +298,42 @@ analysis = FTIRdataanalysis(
     random_state=42
 )
 
-# 3. Prepare data for ML
-print("\nPreparing data...")
-analysis.ml_prepare_data(test_size=0.2, random_state=42)
-print(f"Training: {len(analysis.y_train)}, Test: {len(analysis.y_test)}")
-print(f"Classes: {analysis.class_names}")
-
-# 4. Run all models
+# 3. Run all models (automatically prepares data)
 print("\nEvaluating all models...")
-results = analysis.run_all_models(cv_folds=5)
+results = analysis.run_all_models(
+    test_size=0.2,
+    plot_comparison=True,
+    accuracy_threshold=0.9,
+    top_n_methods=20
+)
 
-# 5. Display top models
+# 4. Display top models
 print("\n" + "="*60)
 print("TOP 10 MODELS")
 print("="*60)
-top10 = results.nlargest(10, 'f1_score')
-print(top10[['model', 'accuracy', 'f1_score', 'cv_score_mean', 'train_time']])
+top10 = results.nlargest(10, 'test_f1')
+print(top10[['model_name', 'test_accuracy', 'test_f1', 'cv_mean', 'train_time']])
 
-# 6. Visualize model comparison
-print("\nGenerating comparison plots...")
-analysis.plot_model_comparison(results, top_n=15)
-analysis.plot_family_comparison(results)
-analysis.plot_efficiency_analysis(results)
-analysis.plot_overfitting_analysis(results)
+# 5. Tune top models
+print("\nTuning top 2 models...")
+tuned = analysis.model_parameter_tuning(number_of_models=2)
 
-# 7. Tune top models
-print("\nTuning top 3 models...")
-tuned = analysis.model_parameter_tuning(top_n=3, n_iter=50)
-print("\nTuned Results:")
-print(tuned[['model', 'best_f1', 'improvement']])
-
-# 8. Explain best model
-best_model = tuned.iloc[0]['model']
-print(f"\nExplaining {best_model} with SHAP...")
-shap_results = analysis.explain_by_shap(
-    model_name=best_model,
-    X=analysis.X_test_scaled,
-    sample_size=100,
-    plot=True
+# 6. Explain best model with SHAP
+print("\nExplaining with SHAP...")
+analysis.explain_by_shap(
+    model_name='XGBoost (100)',
+    max_display=20,
+    sample_size=100
 )
 
-# 9. Local explanations
+# 7. Local explanations
 print("\nGenerating local explanations...")
-analysis.local_shap_plot(sample_indices=[0, 5, 10])
+analysis.local_shap_plot(sample_index=0)
 
-# 10. Save results
+# 8. Save results
 results.to_csv("model_comparison_results.csv", index=False)
-tuned.to_csv("tuned_model_results.csv", index=False)
 
 print("\n✓ Machine learning workflow complete!")
-print(f"Best model: {best_model}")
-print(f"Best F1 score: {tuned.iloc[0]['best_f1']:.4f}")
 ```
 
 ## Cross-Dataset Validation
@@ -410,7 +347,7 @@ from xpectrass.data import load_jung_2018, load_frond_2021
 df_train = load_jung_2018()
 # ... preprocess ...
 analysis_train = FTIRdataanalysis(df_train, label_column="type")
-analysis_train.ml_prepare_data(test_size=0.0)  # Use all for training
+analysis_train.ml_prepare_data(test_size=0.2)
 
 # Test on another dataset
 df_test = load_frond_2021()

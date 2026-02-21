@@ -17,7 +17,15 @@ Data validation is the first step in any preprocessing workflow. It checks for:
 ### validate_spectra
 
 ```python
+import polars as pl
+from xpectrass.data import load_jung_2018
 from xpectrass.utils import validate_spectra
+
+# Validation utilities expect columns named 'sample' and 'label'
+df_raw = load_jung_2018()
+df = pl.from_pandas(
+    df_raw.rename(columns={"sample_id": "sample", "type": "label"})
+)
 
 report = validate_spectra(
     df,

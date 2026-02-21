@@ -12,12 +12,23 @@ The easiest way to apply baseline correction is through the `FTIRdataprocessing`
 
 ```python
 from xpectrass import FTIRdataprocessing
+from xpectrass.data import load_jung_2018
 
-# Initialize with your data
-ftir = FTIRdataprocessing(df, label_column="type")
+# Initialize with sample data
+df = load_jung_2018().head(80)
+ftir = FTIRdataprocessing(df=df, label_column="type")
 
-# Step 1: Evaluate all baseline methods to find the best one
-ftir.find_baseline_method(n_samples=50, plot=True)
+# Prepare denoised input first (baseline evaluation expects processed spectra)
+df_denoised = ftir._get_denoised_data(denoising_method="wavelet", plot=False)
+
+# Step 1: Evaluate baseline methods
+rfzn, nar, snr = ftir.find_baseline_method(
+    data=df_denoised,
+    flat_windows=[(1800, 1900), (2400, 2700)],
+    baseline_methods="FTIR",
+    n_samples=20,
+    plot=False,
+)
 
 # Step 2: View evaluation metrics
 print(ftir.rfzn_tbl)  # Residual Flatness in Zero Noise
@@ -25,10 +36,10 @@ print(ftir.nar_tbl)   # Negative Absorbance Ratio
 print(ftir.snr_tbl)   # Signal-to-Noise Ratio
 
 # Step 3: Plot evaluation results
-ftir.plot_rfzn_nar_snr()
+ftir.plot_rfzn_nar_snr(metric_name="RFZN")
 
 # Step 4: Apply the best method
-ftir.correct_baseline(method='asls', lam=1e6, plot=True)
+ftir.correct_baseline(data=df_denoised, method="asls", lam=1e6, plot=False)
 
 # Step 5: Access corrected data
 corrected_df = ftir.df_corr
@@ -126,13 +137,21 @@ corrected = baseline_correction(
 Compare baseline methods using RFZN and NAR metrics:
 
 ```python
-from xpectrass.utils import evaluate_all_samples
+from xpectrass.utils import evaluate_baseline_correction_methods
 
 # Define flat regions (known baseline-only areas)
 flat_windows = [(2500, 2600), (3350, 3450)]
 
 # Evaluate all methods
-rfzn, nar, snr = evaluate_all_samples(df, flat_windows)
+rfzn, nar, snr = evaluate_baseline_correction_methods(
+    data=df,
+    flat_windows=flat_windows,
+    label_column="type",
+    exclude_columns=["study", "sample_id", "environmental", "resolution"],
+    baseline_methods=["asls", "airpls", "arpls"],
+    n_samples=20,
+    sample_selection="random",
+)
 
 # Lower RFZN and NAR = better baseline correction
 print("Best methods by RFZN:", rfzn.mean().sort_values().head())
@@ -149,9 +168,13 @@ print("Best methods by RFZN:", rfzn.mean().sort_values().head())
 ## Visualization
 
 ```python
-from xpectrass.utils import plot_corrected_spectrum
+from xpectrass.utils import plot_baseline_correction_metric_boxes
 
-plot_corrected_spectrum(df, sample_name='HDPE1', method='airpls')
+# Visualize RFZN distribution for evaluated methods
+plot_baseline_correction_metric_boxes(
+    df=rfzn,
+    metric_name="RFZN",
+)
 ```
 
 ## Recommendations for Plastics

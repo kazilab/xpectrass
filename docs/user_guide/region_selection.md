@@ -5,7 +5,15 @@ Select or exclude specific wavenumber regions for focused analysis.
 ## Overview
 
 ```python
+import polars as pl
+from xpectrass.data import load_jung_2018
 from xpectrass.utils import select_region, exclude_regions, FTIR_REGIONS
+
+# Region utilities expect a Polars dataframe with 'sample' and 'label' columns
+df_raw = load_jung_2018().head(100)
+df = pl.from_pandas(
+    df_raw.rename(columns={"sample_id": "sample", "type": "label"})
+)
 
 # Predefined regions
 print(FTIR_REGIONS.keys())
@@ -149,7 +157,7 @@ spectra = get_spectra_matrix(df)  # Shape: (n_samples, n_wavenumbers)
 ## Example: Classification Regions
 
 ```python
-from xpectrass.utils import select_region
+from xpectrass.utils import select_region, get_wavenumbers
 
 # Key regions for plastic classification
 classification_regions = [

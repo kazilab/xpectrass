@@ -66,8 +66,9 @@ ftir.find_denoising_method(n_samples=50, plot=True)
 ftir.denoise_spect(method="savgol")
 
 # Step 5: Evaluate and apply normalization
-ftir.find_normalization_method(plot=True)
-ftir.normalize(method="snv")
+norm_results = ftir.find_normalization_method(data=ftir.df_denoised, n_splits=5)
+best_norm = norm_results.iloc[0]["method"]
+ftir.normalize(method=best_norm)
 
 # Step 6: Compare all processing stages
 ftir.plot_multiple_spec(sample="Sample1")
@@ -85,11 +86,11 @@ from xpectrass import FTIRdataanalysis
 analysis = FTIRdataanalysis(processed_df, label_column="type")
 
 # Visualize spectra
-analysis.plot_mean_spectra(by_class=True)
+analysis.plot_mean_spectra()
 analysis.plot_heatmap()
 
 # Dimensionality reduction
-analysis.plot_pca(n_components=3)
+analysis.plot_pca()
 analysis.plot_tsne()
 analysis.plot_umap()
 
@@ -100,7 +101,7 @@ analysis.plot_correlation()
 # Machine learning
 analysis.ml_prepare_data(test_size=0.2)
 results = analysis.run_all_models()
-analysis.model_parameter_tuning(top_n=3)
+analysis.model_parameter_tuning(number_of_models=3)
 ```
 
 ## Preprocessing Pipeline Order

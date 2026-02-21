@@ -14,8 +14,11 @@ from xpectrass import FTIRdataprocessing
 # Initialize with your data
 ftir = FTIRdataprocessing(df, label_column="type")
 
+# Convert first (recommended before denoising evaluation)
+df_abs = ftir.convert(plot=False)
+
 # Step 1: Evaluate all denoising methods to find the best one
-ftir.find_denoising_method(n_samples=50, plot=True)
+ftir.find_denoising_method(data=df_abs, n_samples=50, plot=True)
 
 # Step 2: View evaluation results
 print(ftir.denoising_results)
@@ -170,10 +173,16 @@ print(f"SNR improvement: {snr_improvement:.1f} dB")
 ### Batch Evaluation
 
 ```python
-from xpectrass.utils import evaluate_denoising
+from xpectrass.utils import evaluate_denoising_methods
 
 # Compare methods on dataset
-results = evaluate_denoising(df, methods=['savgol', 'wavelet', 'gaussian'])
+results = evaluate_denoising_methods(
+    data=df,
+    methods=["savgol", "wavelet", "gaussian"],
+    label_column="type",
+    exclude_columns=["study", "sample_id", "environmental", "resolution"],
+    n_samples=30,
+)
 
 # Results include SNR, smoothness, and fidelity metrics
 print(results.groupby('method').mean())

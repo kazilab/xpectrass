@@ -1,87 +1,94 @@
 # Scatter Correction
 
-Scatter correction removes light scattering effects that cause baseline shifts and multiplicative intensity variations.
+Scatter correction removes light-scattering effects that introduce baseline shifts and multiplicative intensity differences.
 
 ## Overview
 
 ```python
+import numpy as np
 from xpectrass.utils import scatter_correction, scatter_method_names
 
-# Available methods
 print(scatter_method_names())
 # ['emsc', 'msc', 'snv', 'snv_detrend']
 
-# Apply correction (requires matrix of spectra)
-corrected = scatter_correction(spectra_matrix, method='msc')
+# Single-spectrum example
+reference = np.mean(spectra_matrix, axis=0)
+corrected = scatter_correction(
+    intensities=spectra_matrix[0],
+    method="msc",
+    reference=reference,
+)
 ```
 
 ## Methods
 
 ### MSC (Multiplicative Scatter Correction)
 
-Corrects for additive and multiplicative scatter effects by regressing each spectrum against a reference.
-
-**Model:** spectrum = a + b × reference
-**Correction:** (spectrum - a) / b
-
 ```python
+reference = np.mean(spectra_matrix, axis=0)
 corrected = scatter_correction(
-    spectra_matrix,
-    method='msc',
-    reference=None  # Uses mean if None
+    intensities=spectra_matrix[0],
+    method="msc",
+    reference=reference,
 )
 ```
 
 ### EMSC (Extended MSC)
 
-Extends MSC with polynomial baseline terms for more complex scatter patterns.
-
-**Model:** spectrum = a + b × reference + c₁x + c₂x² + ...
-
 ```python
+reference = np.mean(spectra_matrix, axis=0)
 corrected = scatter_correction(
-    spectra_matrix,
-    method='emsc',
-    poly_order=2
+    intensities=spectra_matrix[0],
+    method="emsc",
+    reference=reference,
+    poly_order=2,
 )
 ```
 
-### SNV (Standard Normal Variate)
-
-Per-spectrum normalization (mean=0, std=1). Simple but effective.
+### SNV
 
 ```python
-corrected = scatter_correction(spectra_matrix, method='snv')
+corrected = scatter_correction(
+    intensities=spectra_matrix[0],
+    method="snv",
+)
 ```
 
 ### SNV + Detrend
 
-SNV followed by polynomial detrending to remove residual slope.
-
 ```python
 corrected = scatter_correction(
-    spectra_matrix,
-    method='snv_detrend',
-    detrend_order=1
+    intensities=spectra_matrix[0],
+    method="snv_detrend",
+    detrend_order=1,
 )
 ```
 
-## Comparison
+## Batch DataFrame Correction
 
-| Method | Removes Offset | Removes Scale | Removes Curvature | Requires Reference |
-|--------|---------------|---------------|-------------------|-------------------|
-| MSC | ✓ | ✓ | ✗ | ✓ (or mean) |
-| EMSC | ✓ | ✓ | ✓ | ✓ (or mean) |
-| SNV | ✓ | ✓ | ✗ | ✗ |
-| SNV+Detrend | ✓ | ✓ | Partial | ✗ |
+For full datasets, use `apply_scatter_correction`:
 
-## When to Use
+```python
+from xpectrass.data import load_jung_2018
+from xpectrass.utils import apply_scatter_correction, convert_spectra
 
-- **MSC/EMSC:** When samples have similar composition but different physical properties (particle size, path length)
-- **SNV:** Quick correction when no reference is available
-- **SNV+Detrend:** When SNV leaves residual slope
+df = load_jung_2018().head(100)
+df_abs = convert_spectra(
+    df,
+    mode="to_absorbance",
+    label_column="type",
+    exclude_columns=["study", "sample_id", "environmental", "resolution"],
+)
 
-## Single Spectrum MSC
+corrected_df = apply_scatter_correction(
+    data=df_abs,
+    method="msc",
+    label_column="type",
+    exclude_columns=["study", "sample_id", "environmental", "resolution"],
+)
+```
+
+## Single Spectrum MSC Diagnostics
 
 ```python
 from xpectrass.utils import msc_single
@@ -89,29 +96,14 @@ from xpectrass.utils import msc_single
 corrected, offset, scale = msc_single(spectrum, reference)
 ```
 
-## Evaluation
+## Quick Quality Check
 
 ```python
-from xpectrass.utils import evaluate_scatter_correction
-
-metrics = evaluate_scatter_correction(spectra_matrix, method='msc')
-print(f"Variance reduction: {metrics['variance_ratio']:.2f}")
-print(f"Correlation improvement: {metrics['correlation_improvement']:.3f}")
-```
-
-## Example
-
-```python
-from xpectrass.utils import scatter_correction
 import numpy as np
 
-# Load spectra matrix (n_samples × n_wavenumbers)
-spectra = load_all_spectra()
+variance_before = np.var(spectra_matrix, axis=0).mean()
+variance_after = np.var(corrected_matrix, axis=0).mean()
 
-# MSC correction using mean as reference
-msc_corrected = scatter_correction(spectra, method='msc')
-
-# Compare variance before/after
-print(f"Variance before: {np.var(spectra, axis=0).mean():.4f}")
-print(f"Variance after: {np.var(msc_corrected, axis=0).mean():.4f}")
+print(f"Variance before: {variance_before:.4f}")
+print(f"Variance after: {variance_after:.4f}")
 ```

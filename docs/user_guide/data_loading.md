@@ -86,7 +86,9 @@ df = load_jung_2018()
 # Inspect dataset
 print(f"Shape: {df.shape}")
 print(f"Label column: 'type'")
-print(f"Wavenumber range: {df.columns[1]} to {df.columns[-1]}")
+spectral_cols = [c for c in df.columns if c not in ["study", "sample_id", "type", "environmental", "resolution"]]
+wn = sorted(float(c) for c in spectral_cols)
+print(f"Wavenumber range: {wn[0]} to {wn[-1]}")
 print(f"Polymer types: {df['type'].value_counts()}")
 ```
 
@@ -234,11 +236,17 @@ The library uses robust wavenumber detection to handle edge cases automatically.
 Always validate your data after loading:
 
 ```python
+import polars as pl
+from xpectrass.data import load_jung_2018
 from xpectrass.utils import validate_spectra
 
-# Validate loaded data
+# validate_spectra expects a Polars dataframe with 'sample' and 'label' columns
 df = load_jung_2018()
-report = validate_spectra(df, verbose=True)
+df_val = pl.from_pandas(
+    df.rename(columns={"sample_id": "sample", "type": "label"})
+)
+
+report = validate_spectra(df_val, verbose=True)
 
 if report['valid']:
     print("✓ Data is valid!")
@@ -264,7 +272,6 @@ The validation function checks for:
 
 ```python
 from xpectrass.data import load_jung_2018, load_frond_2021
-from xpectrass.utils import combine_datasets
 import pandas as pd
 
 # Load individual datasets
@@ -279,14 +286,35 @@ print(f"Combined: {len(df_combined)} spectra")
 
 ### Combine with Interpolation
 
-If datasets have different wavenumber ranges:
+If datasets have different wavenumber ranges, use `combine_datasets`:
 
 ```python
-from xpectrass.utils import interpolate_to_common_grid
+from xpectrass.utils import combine_datasets, convert_spectra
 
-# Interpolate to common wavenumber grid
-df1_interp = interpolate_to_common_grid(df1, target_wn=df2.columns[1:])
-df_combined = pd.concat([df1_interp, df2], ignore_index=True)
+# Convert to absorbance before combining
+df1_abs = convert_spectra(
+    df1,
+    mode="to_absorbance",
+    label_column="type",
+    exclude_columns=["study", "sample_id", "environmental", "resolution"],
+)
+df2_abs = convert_spectra(
+    df2,
+    mode="to_absorbance",
+    label_column="type",
+    exclude_columns=["study", "sample_id", "environmental", "resolution"],
+)
+
+df_combined, common_grid = combine_datasets(
+    datasets=[df1_abs, df2_abs],
+    wn_min=680,
+    wn_max=3000,
+    resolution=2.0,
+    method="pchip",
+    label_column="type",
+    exclude_columns=["study", "sample_id", "environmental", "resolution"],
+    add_study_column=False,
+)
 ```
 
 ## Data Preprocessing Before Analysis
@@ -309,15 +337,10 @@ ftir = FTIRdataprocessing(
 )
 
 # 3. Apply preprocessing pipeline
-ftir.convert(mode="to_absorbance")
-ftir.exclude_interpolate(method="spline")
-ftir.find_baseline_method(n_samples=50)
-ftir.correct_baseline(method="asls")
-ftir.denoise_spect(method="savgol")
-ftir.normalize(method="snv")
+df_norm, *_ = ftir.run(plot=False)
 
 # 4. Get processed data
-processed_df = ftir.df_norm
+processed_df = df_norm
 ```
 
 ## Exporting Processed Data
@@ -354,6 +377,7 @@ df = pd.read_csv("processed_ftir_data.csv", index_col=0)
 from xpectrass import FTIRdataprocessing, FTIRdataanalysis
 from xpectrass.data import load_jung_2018, get_data_info
 from xpectrass.utils import validate_spectra
+import polars as pl
 
 # 1. Explore available datasets
 print("Available datasets:")
@@ -371,7 +395,8 @@ print(f"\nClass distribution:")
 print(df['type'].value_counts())
 
 # 4. Validate data
-report = validate_spectra(df, verbose=False)
+df_val = pl.from_pandas(df.rename(columns={"sample_id": "sample", "type": "label"}))
+report = validate_spectra(df_val, verbose=False)
 print(f"\nValidation: {'✓ Passed' if report['valid'] else '✗ Failed'}")
 
 # 5. Preprocess
@@ -382,7 +407,7 @@ ftir.run()  # Quick run with defaults
 # 6. Analyze
 print("\nAnalyzing...")
 analysis = FTIRdataanalysis(ftir.df_norm, label_column="type")
-analysis.plot_pca(n_components=3)
+analysis.plot_pca()
 
 # 7. Save processed data
 ftir.df_norm.to_csv("jung_2018_processed.csv")
