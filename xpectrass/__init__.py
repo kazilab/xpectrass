@@ -4,36 +4,9 @@ xpectrass - FTIR/ToF-SIMS Spectral Analysis Suite
 
 A comprehensive toolkit for preprocessing and analyzing
 FTIR and ToF-SIMS spectral data for classification and identification.
-
-Quick Start
------------
->>> from xpectrass import FTIRdataprocessing, FTIRdataanalysis
->>> from xpectrass.utils import process_batch_files
->>>
->>> # Load data
->>> df = process_batch_files('files')
->>>
->>> # Create and apply preprocessing pipeline
->>> pipe = FTIRdataprocessing(data='df')
->>> processed = pipe.run()
-
-Modules
--------
-- preprocessing_pipeline : Main FTIRPreprocessor class and presets
-- utils : Individual preprocessing functions
-    - data_validation : Data validation utilities
-    - baseline : Baseline correction (50+ methods)
-    - denoise : Noise reduction (7 methods)
-    - normalization : Intensity normalization (7+ methods)
-    - atmospheric : CO2/H2O correction
-    - derivatives : Spectral derivatives
-    - scatter_correction : MSC, EMSC, SNV
-    - region_selection : Wavenumber region handling
-    - file_management : Data loading utilities
-- data : Bundled datasets (6 FTIR datasets from various studies)
 """
 
-__version__ = "0.0.3"
+__version__ = "0.0.4"
 __author__ = "Data Analysis Team @KaziLab.se"
 __email__ = "xpectrass@kazilab.se"
 __license__ = "MIT"
@@ -91,7 +64,6 @@ from .utils import (
     baseline_correction,
     baseline_method_names,
     apply_baseline_correction,
-    plot_baseline_correction_metric_boxes,
     plot_baseline_correction_metric_boxes,
     plot_baseline_correction_metric_boxes_masked,
     find_best_baseline_method,
@@ -236,7 +208,6 @@ __all__ = [
     'baseline_correction',
     'baseline_method_names',
     'apply_baseline_correction',
-    'plot_baseline_correction_metric_boxes',
     'plot_baseline_correction_metric_boxes',
     'plot_baseline_correction_metric_boxes_masked',
     'find_best_baseline_method',

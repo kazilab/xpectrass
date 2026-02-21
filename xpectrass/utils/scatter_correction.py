@@ -222,6 +222,7 @@ def apply_scatter_correction(
     data: Union[pd.DataFrame, "pl.DataFrame"],
     method: str = "msc",
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -322,7 +323,7 @@ def apply_scatter_correction(
     else:
         df = data.copy()
 
-    # Identify columns to exclude from correction
+    # Prepare exclude_columns list
     if exclude_columns is None:
         exclude_columns = []
     elif isinstance(exclude_columns, str):
@@ -333,6 +334,8 @@ def apply_scatter_correction(
     # Always exclude the label column if it exists
     if label_column in df.columns and label_column not in exclude_columns:
         exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Identify spectral columns by parsing column names as wavenumbers
     numeric_cols, wavenumbers = _infer_spectral_columns(df, exclude_columns, wn_min, wn_max)

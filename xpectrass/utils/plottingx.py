@@ -35,7 +35,8 @@ def _canonical_mode(mode: str) -> str:
 
 def plot_mean_spectra_by_class(
         data: Union[pd.DataFrame, pl.DataFrame],
-        label_column: str = "label",
+        label_column: str = "type",
+        sample_id_column: str = "sample_id",
         exclude_columns: Optional[List[str]] = None,
         wn_min: Optional[float] = None,
         wn_max: Optional[float] = None,
@@ -53,8 +54,10 @@ def plot_mean_spectra_by_class(
     ----------
     data : pd.DataFrame or pl.DataFrame
         Input spectral data with samples as rows and wavenumbers as columns.
-    label_column : str, default "label"
+    label_column : str, default "type"
         Column name containing class labels.
+    sample_id_column : str, default "sample_id"
+        Column name containing sample IDs.
     exclude_columns : list of str, optional
         Additional columns to exclude from spectral data.
     wn_min : float, optional
@@ -91,17 +94,24 @@ def plot_mean_spectra_by_class(
     else:
         df = data.copy()
 
-    # Build exclusion list
-    exclude = [label_column] if label_column in df.columns else []
-    if "sample" in df.columns:
-        exclude.append("sample")
-    if exclude_columns:
-        exclude.extend(exclude_columns)
+    # Prepare exclude_columns list
+    if exclude_columns is None:
+        exclude_columns = []
+    elif isinstance(exclude_columns, str):
+        exclude_columns = [exclude_columns]
+    else:
+        exclude_columns = list(exclude_columns)
+
+    # Always exclude the label column if it exists
+    if label_column in df.columns and label_column not in exclude_columns:
+        exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Infer and sort spectral columns using shared utilities
     spectral_cols, wn_values = _infer_spectral_columns(
         df,
-        exclude_columns=exclude,
+        exclude_columns=exclude_columns,
         wn_min=wn_min,
         wn_max=wn_max
     )
@@ -137,9 +147,11 @@ def plot_mean_spectra_by_class(
 
     # Get unique labels
     unique_labels = sorted(df[label_column].unique())
-    plot_rows = len(unique_labels)//2
+    import math
+    n_cols = 2
+    plot_rows = math.ceil(len(unique_labels)/n_cols)
     # Create figure
-    fig, axes = plt.subplots(plot_rows, 2, figsize=figsize)
+    fig, axes = plt.subplots(plot_rows, n_cols, figsize=figsize)
     axes = axes.flatten()
 
     for idx, label in enumerate(unique_labels):
@@ -201,7 +213,8 @@ def plot_mean_spectra_by_class(
 
 def plot_overlay_mean_spectra(
         data: Union[pd.DataFrame, pl.DataFrame],
-        label_column: str = "label",
+        label_column: str = "type",
+        sample_id_column: str = "sample_id",
         exclude_columns: Optional[List[str]] = None,
         wn_min: Optional[float] = None,
         wn_max: Optional[float] = None,
@@ -219,8 +232,10 @@ def plot_overlay_mean_spectra(
     ----------
     data : pd.DataFrame or pl.DataFrame
         Input spectral data with samples as rows and wavenumbers as columns.
-    label_column : str, default "label"
+    label_column : str, default "type"
         Column name containing class labels.
+    sample_id_column : str, default "sample_id"
+        Column name containing sample IDs.
     exclude_columns : list of str, optional
         Additional columns to exclude from spectral data.
     wn_min : float, optional
@@ -257,17 +272,24 @@ def plot_overlay_mean_spectra(
     else:
         df = data.copy()
 
-    # Build exclusion list
-    exclude = [label_column] if label_column in df.columns else []
-    if "sample" in df.columns:
-        exclude.append("sample")
-    if exclude_columns:
-        exclude.extend(exclude_columns)
+    # Prepare exclude_columns list
+    if exclude_columns is None:
+        exclude_columns = []
+    elif isinstance(exclude_columns, str):
+        exclude_columns = [exclude_columns]
+    else:
+        exclude_columns = list(exclude_columns)
+
+    # Always exclude the label column if it exists
+    if label_column in df.columns and label_column not in exclude_columns:
+        exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Infer and sort spectral columns using shared utilities
     spectral_cols, wn_values = _infer_spectral_columns(
         df,
-        exclude_columns=exclude,
+        exclude_columns=exclude_columns,
         wn_min=wn_min,
         wn_max=wn_max
     )
@@ -363,7 +385,8 @@ def plot_overlay_mean_spectra(
 
 def plot_coefficient_of_variation(
         data: Union[pd.DataFrame, pl.DataFrame],
-        label_column: str = "label",
+        label_column: str = "type",
+        sample_id_column: str = "sample_id",
         exclude_columns: Optional[List[str]] = None,
         wn_min: Optional[float] = None,
         wn_max: Optional[float] = None,
@@ -382,8 +405,10 @@ def plot_coefficient_of_variation(
     ----------
     data : pd.DataFrame or pl.DataFrame
         Input spectral data with samples as rows and wavenumbers as columns.
-    label_column : str, default "label"
+    label_column : str, default "type"
         Column name containing class labels.
+    sample_id_column : str, default "sample_id"
+        Column name containing sample IDs.
     exclude_columns : list of str, optional
         Additional columns to exclude from spectral data.
     wn_min : float, optional
@@ -412,17 +437,24 @@ def plot_coefficient_of_variation(
     else:
         df = data.copy()
 
-    # Build exclusion list
-    exclude = [label_column] if label_column in df.columns else []
-    if "sample" in df.columns:
-        exclude.append("sample")
-    if exclude_columns:
-        exclude.extend(exclude_columns)
+    # Prepare exclude_columns list
+    if exclude_columns is None:
+        exclude_columns = []
+    elif isinstance(exclude_columns, str):
+        exclude_columns = [exclude_columns]
+    else:
+        exclude_columns = list(exclude_columns)
+
+    # Always exclude the label column if it exists
+    if label_column in df.columns and label_column not in exclude_columns:
+        exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Infer and sort spectral columns using shared utilities
     spectral_cols, wn_values = _infer_spectral_columns(
         df,
-        exclude_columns=exclude,
+        exclude_columns=exclude_columns,
         wn_min=wn_min,
         wn_max=wn_max
     )
@@ -479,7 +511,8 @@ def plot_coefficient_of_variation(
 
 def plot_spectral_heatmap(
         data: Union[pd.DataFrame, pl.DataFrame],
-        label_column: str = "label",
+        label_column: str = "type",
+        sample_id_column: str = "sample_id",
         exclude_columns: Optional[List[str]] = None,
         wn_min: Optional[float] = None,
         wn_max: Optional[float] = None,
@@ -496,8 +529,10 @@ def plot_spectral_heatmap(
     ----------
     data : pd.DataFrame or pl.DataFrame
         Input spectral data with samples as rows and wavenumbers as columns.
-    label_column : str, default "label"
+    label_column : str, default "type"
         Column name containing class labels.
+    sample_id_column : str, default "sample_id"
+        Column name containing sample IDs.
     exclude_columns : list of str, optional
         Additional columns to exclude from spectral data.
     wn_min : float, optional
@@ -528,17 +563,24 @@ def plot_spectral_heatmap(
     else:
         df = data.copy()
 
-    # Build exclusion list
-    exclude = [label_column] if label_column in df.columns else []
-    if "sample" in df.columns:
-        exclude.append("sample")
-    if exclude_columns:
-        exclude.extend(exclude_columns)
+    # Prepare exclude_columns list
+    if exclude_columns is None:
+        exclude_columns = []
+    elif isinstance(exclude_columns, str):
+        exclude_columns = [exclude_columns]
+    else:
+        exclude_columns = list(exclude_columns)
+
+    # Always exclude the label column if it exists
+    if label_column in df.columns and label_column not in exclude_columns:
+        exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Infer and sort spectral columns using shared utilities
     spectral_cols, wn_values = _infer_spectral_columns(
         df,
-        exclude_columns=exclude,
+        exclude_columns=exclude_columns,
         wn_min=wn_min,
         wn_max=wn_max
     )

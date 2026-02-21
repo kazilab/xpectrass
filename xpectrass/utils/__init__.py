@@ -50,7 +50,6 @@ from .baseline import (
     baseline_method_names,
     apply_baseline_correction,
     plot_baseline_correction_metric_boxes,
-    plot_baseline_correction_metric_boxes,
     plot_baseline_correction_metric_boxes_masked,
     find_best_baseline_method
 )
@@ -183,7 +182,6 @@ __all__ = [
     'baseline_correction', 
     'baseline_method_names',
     'apply_baseline_correction',
-    'plot_baseline_correction_metric_boxes',
     'plot_baseline_correction_metric_boxes', 
     'plot_baseline_correction_metric_boxes_masked',
     'find_best_baseline_method',

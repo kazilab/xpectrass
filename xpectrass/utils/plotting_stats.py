@@ -28,6 +28,7 @@ sns.set_palette('husl')
 def perform_anova_analysis(
         data: Union[pd.DataFrame, pl.DataFrame],
         label_column: str = "label",
+        sample_id_column: str = "sample_id",
         exclude_columns: Optional[List[str]] = None,
         wn_min: Optional[float] = None,
         wn_max: Optional[float] = None,
@@ -92,17 +93,24 @@ def perform_anova_analysis(
     else:
         df = data.copy()
 
-    # Build exclusion list
-    exclude = [label_column] if label_column in df.columns else []
-    if "sample" in df.columns:
-        exclude.append("sample")
-    if exclude_columns:
-        exclude.extend(exclude_columns)
+    # Prepare exclude_columns list
+    if exclude_columns is None:
+        exclude_columns = []
+    elif isinstance(exclude_columns, str):
+        exclude_columns = [exclude_columns]
+    else:
+        exclude_columns = list(exclude_columns)
+
+    # Always exclude the label column if it exists
+    if label_column in df.columns and label_column not in exclude_columns:
+        exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Infer and sort spectral columns using shared utilities
     spectral_cols, wn_values = _infer_spectral_columns(
         df,
-        exclude_columns=exclude,
+        exclude_columns=exclude_columns,
         wn_min=wn_min,
         wn_max=wn_max
     )
@@ -228,6 +236,7 @@ def perform_anova_analysis(
 def plot_correlation_matrix(
         data: Union[pd.DataFrame, pl.DataFrame],
         label_column: str = "label",
+        sample_id_column: str = "sample_id",
         exclude_columns: Optional[List[str]] = None,
         wn_min: Optional[float] = None,
         wn_max: Optional[float] = None,
@@ -275,17 +284,24 @@ def plot_correlation_matrix(
     else:
         df = data.copy()
 
-    # Build exclusion list
-    exclude = [label_column] if label_column in df.columns else []
-    if "sample" in df.columns:
-        exclude.append("sample")
-    if exclude_columns:
-        exclude.extend(exclude_columns)
+    # Prepare exclude_columns list
+    if exclude_columns is None:
+        exclude_columns = []
+    elif isinstance(exclude_columns, str):
+        exclude_columns = [exclude_columns]
+    else:
+        exclude_columns = list(exclude_columns)
+
+    # Always exclude the label column if it exists
+    if label_column in df.columns and label_column not in exclude_columns:
+        exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Infer and sort spectral columns using shared utilities
     spectral_cols, wn_values = _infer_spectral_columns(
         df,
-        exclude_columns=exclude,
+        exclude_columns=exclude_columns,
         wn_min=wn_min,
         wn_max=wn_max
     )
@@ -300,11 +316,15 @@ def plot_correlation_matrix(
 
     # Calculate correlation matrix
     corr_matrix = df[sampled_wn_cols].astype(float).corr()
+    # Convert string labels to float, then format with 'g' to drop trailing zeros
+    clean_labels = [f"{float(col):g}" for col in corr_matrix.columns]
+    corr_matrix.index = clean_labels
+    corr_matrix.columns = clean_labels
 
     # Plot
     plt.figure(figsize=figsize)
-    sns.heatmap(corr_matrix, cmap='coolwarm', center=0,
-               square=True, linewidths=0, cbar_kws={"shrink": 0.8})
+    sns.heatmap(corr_matrix, cmap='coolwarm', center=0, annot=False, fmt='.0f',
+               square=True, linewidths=0, cbar_kws={"shrink": 0.8, "format": "%.0f"})
     plt.title(f'Spectral Feature Correlation Matrix - {dataset_name}\n(Every {step}th wavenumber)',
              fontsize=14, fontweight='bold')
     plt.tight_layout()

@@ -215,6 +215,7 @@ def apply_denoising(
     data: Union[pd.DataFrame, "pl.DataFrame"],
     method: str = "savgol",
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -322,6 +323,8 @@ def apply_denoising(
     # Always exclude the label column if it exists
     if label_column in df.columns and label_column not in exclude_columns:
         exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Use spectral_utils to infer and sort spectral columns
     numeric_cols, wavenumbers = _infer_spectral_columns(
@@ -857,6 +860,7 @@ def evaluate_denoising_methods(
     data: Union[pd.DataFrame, "pl.DataFrame"],
     methods: Optional[List[str]] = None,
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -937,6 +941,8 @@ def evaluate_denoising_methods(
     # Always exclude the label column if it exists
     if label_column in df.columns and label_column not in exclude_columns:
         exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Use spectral_utils to infer and sort spectral columns
     numeric_cols, wavenumbers = _infer_spectral_columns(

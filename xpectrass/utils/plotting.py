@@ -15,7 +15,8 @@ from .spectral_utils import (
 def plot_ftir_spectra(
     data: Union[pd.DataFrame, pl.DataFrame],
     samples: Union[str, Sequence[str]] = None,
-    label_column: str = "label",
+    label_column: str = "type",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -39,8 +40,10 @@ def plot_ftir_spectra(
         `label_column` for grouping information.
     samples : str | list[str] | None, default None
         Which sample names (from "sample" column) to plot.  *None* ⇒ plot *all* rows.
-    label_column : str, default "label"
+    label_column : str, default "type"
         Name of the non-spectral column to ignore when plotting.
+    sample_id_column : str, default "sample_id"
+        Name of the sample id column.
     exclude_columns : list[str] | None, default None
         Additional column names to exclude from spectral data (e.g., metadata
         like 'temperature', 'batch_id'). The label_column is always excluded.
@@ -92,12 +95,12 @@ def plot_ftir_spectra(
 
     # --- Determine if we should use "sample" column or index ------------------
     # If "sample" column exists, use it for sample identification
-    use_sample_column = "sample" in df.columns
+    use_sample_column = sample_id_column in df.columns
 
     # --- Select rows to plot --------------------------------------------------
     if samples is None:
         if use_sample_column:
-            rows = df["sample"].tolist()
+            rows = df[sample_id_column].tolist()
         else:
             rows = df.index.tolist()
     elif isinstance(samples, str):
@@ -106,17 +109,24 @@ def plot_ftir_spectra(
         rows = list(samples)
 
     # --- Identify and sort spectral columns using shared utilities -----------
-    # Build exclusion list
-    exclude = [label_column] if label_column in df.columns else []
-    if use_sample_column:
-        exclude.append("sample")
-    if exclude_columns:
-        exclude.extend(exclude_columns)
+    # Prepare exclude_columns list
+    if exclude_columns is None:
+        exclude_columns = []
+    elif isinstance(exclude_columns, str):
+        exclude_columns = [exclude_columns]
+    else:
+        exclude_columns = list(exclude_columns)
+
+    # Always exclude the label column if it exists
+    if label_column in df.columns and label_column not in exclude_columns:
+        exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Infer spectral columns (filter by wn_min/wn_max if provided)
     spectral_cols, wn_values = _infer_spectral_columns(
         df,
-        exclude_columns=exclude,
+        exclude_columns=exclude_columns,
         wn_min=wn_min,  # Filter columns to this range (efficient)
         wn_max=wn_max   # x_min/x_max will be used for display zoom
     )
@@ -172,7 +182,7 @@ def plot_ftir_spectra(
     # --- Prepare data for efficient plotting (avoid O(N²) masking) ------------
     if use_sample_column:
         # Check for duplicate sample names ONCE before plotting
-        duplicates = df[df["sample"].isin(rows)]["sample"].value_counts()
+        duplicates = df[df[sample_id_column].isin(rows)][sample_id_column].value_counts()
         duplicates = duplicates[duplicates > 1]
         if len(duplicates) > 0:
             dup_samples = ", ".join([f"'{s}' ({count}x)" for s, count in duplicates.items()])
@@ -183,7 +193,7 @@ def plot_ftir_spectra(
             )
 
         # Filter to requested samples and set index ONCE (O(N) instead of O(N²))
-        df_subset = df[df["sample"].isin(rows)].set_index("sample")
+        df_subset = df[df[sample_id_column].isin(rows)].set_index(sample_id_column)
 
         # Check for missing samples
         missing_samples = set(rows) - set(df_subset.index)
@@ -323,7 +333,8 @@ def compare_ftir_spectra(
     data_list: List[Union[pd.DataFrame, pl.DataFrame]],
     labels: List[str],
     sample: str,
-    label_column: str = "label",
+    label_column: str = "type",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -355,8 +366,10 @@ def compare_ftir_spectra(
         Must have same length as data_list.
     sample : str
         Sample name (from "sample" column or row index) to compare across all datasets.
-    label_column : str, default "label"
+    label_column : str, default "type"
         Name of the non-spectral column to ignore when plotting.
+    sample_id_column : str, default "sample_id"
+        Name of the sample id column.
     exclude_columns : list[str] | None, default None
         Additional column names to exclude from spectral data.
     wn_min : float, optional
@@ -466,12 +479,12 @@ def compare_ftir_spectra(
             df = data.copy()
 
         # Determine if we should use "sample" column or index
-        use_sample_column = "sample" in df.columns
+        use_sample_column = sample_id_column in df.columns
 
         # Prepare data for efficient extraction
         if use_sample_column:
             # Check for duplicate sample names
-            sample_counts = df["sample"].value_counts()
+            sample_counts = df[sample_id_column].value_counts()
             if sample in sample_counts and sample_counts[sample] > 1:
                 raise ValueError(
                     f"Duplicate sample name '{sample}' found in dataset '{label}' ({sample_counts[sample]} occurrences). "
@@ -480,7 +493,7 @@ def compare_ftir_spectra(
                 )
 
             # Set index for O(1) lookup
-            df = df.set_index("sample")
+            df = df.set_index(sample_id_column)
 
             # Check if sample exists
             if sample not in df.index:
@@ -489,15 +502,24 @@ def compare_ftir_spectra(
             if sample not in df.index:
                 raise ValueError(f"Sample '{sample}' not found in dataset '{label}'")
 
-        # Build exclusion list (sample column already moved to index if applicable)
-        exclude = [label_column] if label_column in df.columns else []
-        if exclude_columns:
-            exclude.extend(exclude_columns)
+        # Prepare exclude_columns list
+        if exclude_columns is None:
+            exclude_columns = []
+        elif isinstance(exclude_columns, str):
+            exclude_columns = [exclude_columns]
+        else:
+            exclude_columns = list(exclude_columns)
+
+        # Always exclude the label column if it exists
+        if label_column in df.columns and label_column not in exclude_columns:
+            exclude_columns.append(label_column)
+        if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+            exclude_columns.append(sample_id_column)
 
         # Infer and sort spectral columns
         spectral_cols, wn_values = _infer_spectral_columns(
             df,
-            exclude_columns=exclude,
+            exclude_columns=exclude_columns,
             wn_min=wn_min,
             wn_max=wn_max
         )

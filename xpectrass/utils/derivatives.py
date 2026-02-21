@@ -438,6 +438,7 @@ def derivative_with_smoothing(
 def derivative_batch(
     data: Union[pd.DataFrame, pl.DataFrame, np.ndarray],
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -548,7 +549,8 @@ def derivative_batch(
     # Always exclude the label column if it exists
     if label_column in df.columns and label_column not in exclude_columns:
         exclude_columns.append(label_column)
-
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
     # Use spectral_utils to infer and sort spectral columns
     numeric_cols, wavenumbers = _infer_spectral_columns(
         df, exclude_columns, wn_min, wn_max
@@ -644,6 +646,7 @@ def derivative_batch(
 def plot_derivatives(
     data: Union[pd.DataFrame, pl.DataFrame, np.ndarray],
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -753,7 +756,8 @@ def plot_derivatives(
         # Always exclude the label column if it exists
         if label_column in df.columns and label_column not in exclude_columns:
             exclude_columns.append(label_column)
-
+        if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+            exclude_columns.append(sample_id_column)
         # Use spectral_utils to infer and sort spectral columns
         numeric_cols, wn_values = _infer_spectral_columns(
             df, exclude_columns, wn_min, wn_max

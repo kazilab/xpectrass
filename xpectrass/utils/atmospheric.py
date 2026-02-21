@@ -530,6 +530,7 @@ def atmospheric_correction(
     co2_ranges: Optional[List[Tuple[float, float]]] = None,
     h2o_ranges: Optional[List[Tuple[float, float]]] = None,
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -599,6 +600,8 @@ def atmospheric_correction(
     # Always exclude the label column if it exists
     if label_column in df.columns and label_column not in exclude_columns:
         exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Identify spectral columns by parsing column names as wavenumbers.
     numeric_cols, wavenumbers = _infer_spectral_columns(df, exclude_columns, wn_min, wn_max)
@@ -698,6 +701,7 @@ def exclude_and_interpolate_regions(
     interpolate_ranges: Optional[List[Tuple[float, float]]] = None,
     method: str = "interpolate",
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -742,6 +746,8 @@ def exclude_and_interpolate_regions(
     # Always exclude the label column if it exists
     if label_column in df.columns and label_column not in exclude_columns:
         exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Identify spectral columns by parsing column names as wavenumbers.
     numeric_cols, wavenumbers = _infer_spectral_columns(df, exclude_columns, wn_min, wn_max)

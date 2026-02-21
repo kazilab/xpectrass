@@ -196,6 +196,7 @@ def get_class_names(
 def prepare_data(
     data: Union[pd.DataFrame, pl.DataFrame],
     label_column: str = 'type',
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -270,7 +271,11 @@ def prepare_data(
     # Build list of columns to exclude
     if exclude_columns is None:
         exclude_columns = []
-    exclude_columns = list(exclude_columns) + [label_column]
+    exclude_columns = list(exclude_columns)
+    if label_column in data.columns and label_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
+    if sample_id_column in data.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Infer and sort spectral columns using shared utilities
     spectral_cols, wn_values = _infer_spectral_columns(
@@ -372,7 +377,7 @@ def get_all_models():
     )
 
     models['Linear Discriminant Analysis'] = LinearDiscriminantAnalysis()
-    models['Quadratic Discriminant Analysis'] = QuadraticDiscriminantAnalysis(solver='eigen', shrinkage='auto')
+    models['Quadratic Discriminant Analysis'] = QuadraticDiscriminantAnalysis()
 
     # SGD variants with different penalties
     models['SGD Classifier'] = SGDClassifier(max_iter=1000, random_state=42, n_jobs=-1)
@@ -2319,6 +2324,5 @@ def plot_shap_decision(
         plt.close()
     else:
         plt.show()
-
 
 

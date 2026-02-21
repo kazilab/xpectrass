@@ -100,7 +100,7 @@ FTIR_BASELINE_METHODS = [
     'modpoly', 'imodpoly', 'penalized_poly'
 ]
 
-FTIR_DNOISING_METHODS = [
+FTIR_DENOISING_METHODS = [
 'savgol', 'wavelet', 'moving_average', 'gaussian', 'median', 'whittaker', 'lowpass'
 ]
 
@@ -137,8 +137,10 @@ class FTIRdataprocessing:
         Input FTIR spectral data with samples as rows and wavenumbers as columns.
         Must include a label column for sample identification.
 
-    label_column : str, default="label"
+    label_column : str, default="type"
         Name of the column containing sample labels/identifiers.
+    sample_id_column : str, default="sample_id"
+        Name of the column containing sample identifiers.
 
     exclude_columns : list of str, optional
         Additional non-spectral columns to exclude from processing (e.g., metadata).
@@ -162,7 +164,7 @@ class FTIRdataprocessing:
     baseline_methods : list of str, default=FTIR_BASELINE_METHODS
         Baseline correction methods to evaluate.
 
-    denoising_methods : list of str, default=FTIR_DNOISING_METHODS
+    denoising_methods : list of str, default=FTIR_DENOISING_METHODS
         Denoising methods to evaluate.
 
     sample_selection : str, default="random"
@@ -213,7 +215,7 @@ class FTIRdataprocessing:
     >>> # Initialize processing pipeline
     >>> ftir = FTIRdataprocessing(
     ...     df,
-    ...     label_column="label",
+    ...     label_column="type",
     ...     wn_min=400,
     ...     wn_max=4000
     ... )
@@ -254,10 +256,11 @@ class FTIRdataprocessing:
         self,
         df,
         label_column: str = "type",
+        sample_id_column: str = "sample_id",
         exclude_columns: Optional[List[str]] = None,
         wn_min: Optional[float] = None,
         wn_max: Optional[float] = None,
-        denoising_methods: Optional[List[str]] = FTIR_DNOISING_METHODS,
+        denoising_methods: Optional[List[str]] = FTIR_DENOISING_METHODS,
         flat_windows: List[Tuple[float, float]] = FLAT_WINDOWS,
         baseline_methods: Optional[List[str]] = FTIR_BASELINE_METHODS,
         exclude_regions = EXCLUDE_REGIONS,
@@ -269,6 +272,7 @@ class FTIRdataprocessing:
     ):
         self.df = df
         self.label_column = label_column
+        self.sample_id_column = sample_id_column
         self.exclude_columns = exclude_columns
         self.wn_min = wn_min
         self.wn_max = wn_max
@@ -351,6 +355,7 @@ class FTIRdataprocessing:
             data = data,
             samples = samples,
             label_column = self.label_column,
+            sample_id_column = self.sample_id_column,
             exclude_columns = self.exclude_columns,
             wn_min = self.wn_min,
             wn_max = self.wn_max,
@@ -426,6 +431,7 @@ class FTIRdataprocessing:
             data = data,
             mode = mode,
             label_column = self.label_column,
+            sample_id_column = self.sample_id_column,
             exclude_columns = self.exclude_columns,
         )
 
@@ -439,6 +445,7 @@ class FTIRdataprocessing:
                 data = self.converted_df,
                 samples = None,
                 label_column = self.label_column,
+                sample_id_column = self.sample_id_column,
                 exclude_columns = self.exclude_columns,
                 wn_min = self.wn_min,
                 wn_max = self.wn_max,
@@ -542,6 +549,7 @@ class FTIRdataprocessing:
             data = data,
             methods = methods,
             label_column = self.label_column,
+            sample_id_column = self.sample_id_column,
             exclude_columns = self.exclude_columns,
             wn_min = self.wn_min,
             wn_max = self.wn_max,
@@ -737,6 +745,7 @@ class FTIRdataprocessing:
             data = data,
             method = method,
             label_column = self.label_column,
+            sample_id_column = self.sample_id_column,
             exclude_columns = self.exclude_columns,
             wn_min = self.wn_min,
             wn_max = self.wn_max,
@@ -752,6 +761,7 @@ class FTIRdataprocessing:
                 data = self.df_denoised,
                 samples = None,
                 label_column = self.label_column,
+                sample_id_column = self.sample_id_column,
                 exclude_columns = self.exclude_columns,
                 wn_min = self.wn_min,
                 wn_max = self.wn_max,
@@ -876,6 +886,7 @@ class FTIRdataprocessing:
                 data= data,
                 flat_windows = flat_windows,
                 label_column = self.label_column,
+                sample_id_column = self.sample_id_column,
                 exclude_columns = self.exclude_columns,
                 wn_min = self.wn_min,
                 wn_max = self.wn_max,
@@ -963,11 +974,12 @@ class FTIRdataprocessing:
         >>> ftir.plot_rfzn_nar_snr(metric_name="NAR", figsize=(20, 6))
         """
         # Validate metric name
-        if metric_name not in ["RZFN", "NAR", "SNR"]:
-            raise ValueError(" only allowed matric names are 'RZFN', 'NAR' and S'NR', please enter the correct one!")
+        metric_name = metric_name.upper()
+        if metric_name not in ["RFZN", "NAR", "SNR"]:
+            raise ValueError(" only allowed matric names are 'RFZN', 'NAR' and 'SNR', please enter the correct one!")
 
         # Auto-select the correct table if not provided
-        if df is None and metric_name == "RZFN":
+        if df is None and metric_name == "RFZN":
             df = self.rfzn_tbl
         if df is None and metric_name == "NAR":
             df = self.nar_tbl
@@ -1153,6 +1165,7 @@ class FTIRdataprocessing:
             data = data,
             method = method,
             label_column = self.label_column,
+            sample_id_column = self.sample_id_column,
             exclude_columns = self.exclude_columns,
             wn_min = self.wn_min,
             wn_max = self.wn_max,
@@ -1172,6 +1185,7 @@ class FTIRdataprocessing:
                 data = self.df_corr,
                 samples = None,
                 label_column = self.label_column,
+                sample_id_column = self.sample_id_column,
                 exclude_columns = self.exclude_columns,
                 wn_min = self.wn_min,
                 wn_max = self.wn_max,
@@ -1253,6 +1267,7 @@ class FTIRdataprocessing:
             interpolate_ranges = self.interpolate_regions,
             method = method,
             label_column = self.label_column,
+            sample_id_column = self.sample_id_column,
             exclude_columns = self.exclude_columns,
             wn_min = self.wn_min,
             wn_max = self.wn_max
@@ -1268,6 +1283,7 @@ class FTIRdataprocessing:
                 data = self.df_atm,
                 samples = None,
                 label_column = self.label_column,
+                sample_id_column = self.sample_id_column,
                 exclude_columns = self.exclude_columns,
                 wn_min = self.wn_min,
                 wn_max = self.wn_max,
@@ -1398,6 +1414,7 @@ class FTIRdataprocessing:
             methods=methods,
             method_kwargs_map=method_kwargs_map,
             label_column=self.label_column,
+            sample_id_column=self.sample_id_column,
             exclude_columns=self.exclude_columns,
             wn_min=self.wn_min,
             wn_max=self.wn_max,
@@ -1481,6 +1498,7 @@ class FTIRdataprocessing:
             data = data,
             method = method,
             label_column = self.label_column,
+            sample_id_column = self.sample_id_column,
             exclude_columns = self.exclude_columns,
             wn_min = self.wn_min,
             wn_max = self.wn_max,
@@ -1496,6 +1514,7 @@ class FTIRdataprocessing:
                 data = self.df_norm,
                 samples = None,
                 label_column = self.label_column,
+                sample_id_column = self.sample_id_column,
                 exclude_columns = self.exclude_columns,
                 wn_min = self.wn_min,
                 wn_max = self.wn_max,
@@ -1580,6 +1599,7 @@ class FTIRdataprocessing:
         df_deriv = derivative_batch(
             data = data,
             label_column = self.label_column,
+            sample_id_column = self.sample_id_column,
             exclude_columns = self.exclude_columns,
             order = order,
             window_length = window_length,
@@ -1594,9 +1614,10 @@ class FTIRdataprocessing:
         if plot:
             print(f'{"#"*10} Plotting {deriv} Spectra! {"#"*10}')
             plot_ftir_spectra(
-                data = self.df_deriv,
+                data = df_deriv,
                 samples = None,
                 label_column = self.label_column,
+                sample_id_column = self.sample_id_column,
                 exclude_columns = self.exclude_columns,
                 wn_min = self.wn_min,
                 wn_max = self.wn_max,
@@ -1746,7 +1767,7 @@ class FTIRdataprocessing:
 
         # Use first sample if not specified
         if sample is None:
-            sample = self.df_atm[:1,:1].values
+            sample = self.df_atm.loc[0,"sample_id"]
 
         # Create comparison plot
         compare_ftir_spectra(
@@ -1804,11 +1825,11 @@ class FTIRdataprocessing:
         denoising_method : str, default="savgol"
             Denoising method.
 
-        normalization_method : str, default="mean_center"
+        normalization_method : str, default="vector"
             Normalization method.
 
-        plot : str, optional
-            Plot type: "deriv" for derivative comparison, "compare" for pipeline comparison.
+        plot : bool, default False
+            Plot bool: True to plot, False otherwise.
 
         plot_sample : str, optional
             Sample name to plot. If None, uses first sample from dataset.
@@ -1834,7 +1855,7 @@ class FTIRdataprocessing:
         Examples
         --------
         >>> # Run full preprocessing pipeline
-        >>> ftir = FTIRdataprocessing(df, label_column="label")
+        >>> ftir = FTIRdataprocessing(df, label_column="type")
         >>> df_norm, d0, d1, d2, d3 = ftir.run()
         >>>
         >>> # Run with plotting
@@ -2182,6 +2203,7 @@ class FTIRdataanalysis:
         df,
         dataset_name: str = None,
         label_column: str = "type",
+        sample_id_column: str = "sample_id",
         exclude_columns: Optional[List[str]] = None,
         start_wn: Optional[float] = None,
         end_wn: Optional[float] = None,
@@ -2192,6 +2214,7 @@ class FTIRdataanalysis:
         self.df = df
         self.dataset_name = dataset_name
         self.label_column = label_column
+        self.sample_id_column = sample_id_column
         self.exclude_columns = exclude_columns
         self.start_wn = start_wn
         self.end_wn = end_wn
@@ -2234,6 +2257,7 @@ class FTIRdataanalysis:
                         dataset_name=self.dataset_name,
                         title=title,
                         label_column=self.label_column,
+                        sample_id_column=self.sample_id_column,
                         exclude_columns=self.exclude_columns,
                         figsize=figsize,
                         save_plot=save_plot,
@@ -2274,6 +2298,7 @@ class FTIRdataanalysis:
                         dataset_name=self.dataset_name,
                         title=title,
                         label_column=self.label_column,
+                        sample_id_column=self.sample_id_column,
                         exclude_columns=self.exclude_columns,
                         figsize=figsize,
                         save_plot=save_plot,
@@ -2315,6 +2340,7 @@ class FTIRdataanalysis:
                         dataset_name=self.dataset_name,
                         title=title,
                         label_column=self.label_column,
+                        sample_id_column=self.sample_id_column,
                         exclude_columns=self.exclude_columns,
                         figsize=figsize,
                         save_plot=save_plot,
@@ -2351,6 +2377,7 @@ class FTIRdataanalysis:
                         data=self.df,
                         dataset_name=self.dataset_name,
                         label_column=self.label_column,
+                        sample_id_column=self.sample_id_column,
                         exclude_columns=self.exclude_columns,
                         figsize=figsize,
                         save_plot=save_plot,
@@ -2392,6 +2419,7 @@ class FTIRdataanalysis:
                         data=self.df,
                         dataset_name=self.dataset_name,
                         label_column=self.label_column,
+                        sample_id_column=self.sample_id_column,
                         exclude_columns=self.exclude_columns,
                         figsize=figsize,
                         save_plot=save_plot,
@@ -2429,6 +2457,7 @@ class FTIRdataanalysis:
                         data=self.df,
                         dataset_name=self.dataset_name,
                         label_column=self.label_column,
+                        sample_id_column=self.sample_id_column,
                         exclude_columns=self.exclude_columns,
                         figsize=figsize,
                         save_plot=save_plot,
@@ -2467,6 +2496,7 @@ class FTIRdataanalysis:
                         data=self.df,
                         dataset_name=self.dataset_name,
                         label_column=self.label_column,
+                        sample_id_column=self.sample_id_column,
                         exclude_columns=self.exclude_columns,
                         standardize=standardize,
                         handle_missing=handle_missing,
@@ -2515,6 +2545,7 @@ class FTIRdataanalysis:
                         data=self.df,
                         dataset_name=self.dataset_name,
                         label_column=self.label_column,
+                        sample_id_column=self.sample_id_column,
                         exclude_columns=self.exclude_columns,
                         perplexity=perplexity,
                         n_iter=n_iter,
@@ -2567,6 +2598,7 @@ class FTIRdataanalysis:
                         data=self.df,
                         dataset_name=self.dataset_name,
                         label_column=self.label_column,
+                        sample_id_column=self.sample_id_column,
                         exclude_columns=self.exclude_columns,
                         n_neighbors=n_neighbors,
                         min_dist=min_dist,
@@ -2618,6 +2650,7 @@ class FTIRdataanalysis:
                         data=self.df,
                         dataset_name=self.dataset_name,
                         label_column=self.label_column,
+                        sample_id_column=self.sample_id_column,
                         exclude_columns=self.exclude_columns,
                         n_components=n_components,
                         standardize=standardize,
@@ -2664,6 +2697,7 @@ class FTIRdataanalysis:
                         data=self.df,
                         dataset_name=self.dataset_name,
                         label_column=self.label_column,
+                        sample_id_column=self.sample_id_column,
                         exclude_columns=self.exclude_columns,
                         n_components=n_components,
                         n_orthogonal=n_orthogonal,
@@ -2718,6 +2752,7 @@ class FTIRdataanalysis:
                         data=self.df,
                         dataset_name=self.dataset_name,
                         label_column=self.label_column,
+                        sample_id_column=self.sample_id_column,
                         exclude_columns=self.exclude_columns,
                         n_clusters=n_clusters,
                         pca_components=pca_components,
@@ -2774,6 +2809,7 @@ class FTIRdataanalysis:
                         data=self.df,
                         dataset_name=self.dataset_name,
                         label_column=self.label_column,
+                        sample_id_column=self.sample_id_column,
                         exclude_columns=self.exclude_columns,
                         n_clusters=n_clusters,
                         pca_components=pca_components,
@@ -2822,25 +2858,26 @@ class FTIRdataanalysis:
             random_state = 42
         else:
             random_state = self.random_state
-        dir = prepare_data(
+        dir_ = prepare_data(
             data=self.df,
             label_column=self.label_column,
+            sample_id_column=self.sample_id_column,
             exclude_columns=self.exclude_columns,
             test_size=test_size,
             random_state=random_state
         )
-        self.x_train_scaled = dir['X_train']
-        self.x_test_scaled = dir['X_test']
-        self.x_train_raw = dir['X_train_raw']
-        self.x_test_raw = dir['X_test_raw']
-        self.y_train = dir['y_train']
-        self.y_test = dir['y_test']
-        self.scaler = dir['scaler']
-        self.label_encoder = dir['label_encoder']
-        self.class_names = dir['class_names']
-        self.wavenumbers = dir['wavenumbers']
-        self.dir = dir
-        return self.dir
+        self.x_train_scaled = dir_['X_train']
+        self.x_test_scaled = dir_['X_test']
+        self.x_train_raw = dir_['X_train_raw']
+        self.x_test_raw = dir_['X_test_raw']
+        self.y_train = dir_['y_train']
+        self.y_test = dir_['y_test']
+        self.scaler = dir_['scaler']
+        self.label_encoder = dir_['label_encoder']
+        self.class_names = dir_['class_names']
+        self.wavenumbers = dir_['wavenumbers']
+        self.dir_ = dir_
+        return self.dir_
 
     def available_models(
             self,
@@ -2903,10 +2940,10 @@ class FTIRdataanalysis:
         >>> print(f"Test Accuracy: {overall['accuracy']:.3f}")
         """
         if model is None:
+            if model_name not in self.models:
+                available_models = ', '.join(self.models.keys())
+                raise ValueError(f"Model '{model_name}' not found. Available models: {available_models}")
             model = self.models[model_name]
-        if model_name not in self.models:
-            available_models = ', '.join(self.models.keys())
-            raise ValueError(f"Model '{model_name}' not found. Available models: {available_models}")
         self.ml_prepare_data()
         res, m = evaluate_model(
             name=model_name,
@@ -2982,7 +3019,7 @@ class FTIRdataanalysis:
     def run_all_models(
             self,
             test_size=0.2,
-            plot_comparision=True,
+            plot_comparison=True,
             accuracy_threshold=0.9,
             top_n_methods=20,
             save_plot_path=None
@@ -2996,7 +3033,7 @@ class FTIRdataanalysis:
 
         Parameters
         ----------
-        plot_comparision : bool, default=True
+        plot_comparison : bool, default=True
             If True, creates multiple comparison plots (model comparison,
             family comparison, efficiency analysis, overfitting analysis).
         accuracy_threshold : float, default=0.9
@@ -3017,13 +3054,13 @@ class FTIRdataanalysis:
         >>> print(results.head())
         >>> best_model = results.iloc[0]['model_name']
         """
-        dir = self.ml_prepare_data(test_size=test_size)
+        dir_ = self.ml_prepare_data(test_size=test_size)
         results_all = evaluate_all_models(
             models=get_all_models(),
-            data_dict=dir,
+            data_dict=dir_,
             dataset_name=self.dataset_name
         )
-        if plot_comparision:
+        if plot_comparison:
             plot_model_comparison(
                 results_df=results_all,
                 dataset_name=self.dataset_name,
@@ -3079,7 +3116,7 @@ class FTIRdataanalysis:
         >>> print(tuned_results[0]['best_params'])
         """
         tuning_results = tune_top_models(
-            data_dict=self.dir,
+            data_dict=self.dir_,
             results_df=self.results_all,
             top_n=number_of_models
             )
@@ -3126,17 +3163,17 @@ class FTIRdataanalysis:
             raise ValueError(f"Model '{model_name}' not found. Available models: {available_models}")
         models = get_all_models()
         model = models[model_name]
-        dir = self.ml_prepare_data(test_size=test_size)
-        x_train_scaled = dir['X_train']
-        x_test_scaled = dir['X_test']
-        x_train_raw = dir['X_train_raw']
-        x_test_raw = dir['X_test_raw']
-        y_train = dir['y_train']
-        y_test = dir['y_test']
-        scaler = dir['scaler']
-        label_encoder = dir['label_encoder']
-        class_names = dir['class_names']
-        wavenumbers = dir['wavenumbers']
+        dir_ = self.ml_prepare_data(test_size=test_size)
+        x_train_scaled = dir_['X_train']
+        x_test_scaled = dir_['X_test']
+        x_train_raw = dir_['X_train_raw']
+        x_test_raw = dir_['X_test_raw']
+        y_train = dir_['y_train']
+        y_test = dir_['y_test']
+        scaler = dir_['scaler']
+        label_encoder = dir_['label_encoder']
+        class_names = dir_['class_names']
+        wavenumbers = dir_['wavenumbers']
 
         _, trained_model = evaluate_model(
             name=model_name,
@@ -3156,7 +3193,7 @@ class FTIRdataanalysis:
             X_test=x_test_scaled,
             y_test=y_test,
             class_names=class_names,
-            data_dict=dir,
+            data_dict=dir_,
             wavenumbers=wavenumbers,
             max_display=max_display,
             sample_size=sample_size,

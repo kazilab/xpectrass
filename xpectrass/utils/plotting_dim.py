@@ -31,6 +31,7 @@ sns.set_palette('husl')
 def perform_pca_analysis(
         data: Union[pd.DataFrame, pl.DataFrame],
         label_column: str = "label",
+        sample_id_column: str = "sample_id",
         exclude_columns: Optional[List[str]] = None,
         wn_min: Optional[float] = None,
         wn_max: Optional[float] = None,
@@ -95,17 +96,24 @@ def perform_pca_analysis(
     else:
         df = data.copy()
 
-    # Build exclusion list
-    exclude = [label_column] if label_column in df.columns else []
-    if "sample" in df.columns:
-        exclude.append("sample")
-    if exclude_columns:
-        exclude.extend(exclude_columns)
+    # Prepare exclude_columns list
+    if exclude_columns is None:
+        exclude_columns = []
+    elif isinstance(exclude_columns, str):
+        exclude_columns = [exclude_columns]
+    else:
+        exclude_columns = list(exclude_columns)
+
+    # Always exclude the label column if it exists
+    if label_column in df.columns and label_column not in exclude_columns:
+        exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Infer and sort spectral columns using shared utilities
     spectral_cols, wn_values = _infer_spectral_columns(
         df,
-        exclude_columns=exclude,
+        exclude_columns=exclude_columns,
         wn_min=wn_min,
         wn_max=wn_max
     )
@@ -302,6 +310,7 @@ def perform_pca_analysis(
 def perform_tsne_analysis(
         data: Union[pd.DataFrame, pl.DataFrame],
         label_column: str = "label",
+        sample_id_column: str = "sample_id",
         exclude_columns: Optional[List[str]] = None,
         wn_min: Optional[float] = None,
         wn_max: Optional[float] = None,
@@ -372,17 +381,24 @@ def perform_tsne_analysis(
     else:
         df = data.copy()
 
-    # Build exclusion list
-    exclude = [label_column] if label_column in df.columns else []
-    if "sample" in df.columns:
-        exclude.append("sample")
-    if exclude_columns:
-        exclude.extend(exclude_columns)
+    # Prepare exclude_columns list
+    if exclude_columns is None:
+        exclude_columns = []
+    elif isinstance(exclude_columns, str):
+        exclude_columns = [exclude_columns]
+    else:
+        exclude_columns = list(exclude_columns)
+
+    # Always exclude the label column if it exists
+    if label_column in df.columns and label_column not in exclude_columns:
+        exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Infer and sort spectral columns using shared utilities
     spectral_cols, wn_values = _infer_spectral_columns(
         df,
-        exclude_columns=exclude,
+        exclude_columns=exclude_columns,
         wn_min=wn_min,
         wn_max=wn_max
     )
@@ -478,6 +494,7 @@ def perform_tsne_analysis(
 def perform_umap_analysis(
         data: Union[pd.DataFrame, pl.DataFrame],
         label_column: str = "label",
+        sample_id_column: str = "sample_id",
         exclude_columns: Optional[List[str]] = None,
         wn_min: Optional[float] = None,
         wn_max: Optional[float] = None,
@@ -555,17 +572,24 @@ def perform_umap_analysis(
     else:
         df = data.copy()
 
-    # Build exclusion list
-    exclude = [label_column] if label_column in df.columns else []
-    if "sample" in df.columns:
-        exclude.append("sample")
-    if exclude_columns:
-        exclude.extend(exclude_columns)
+    # Prepare exclude_columns list
+    if exclude_columns is None:
+        exclude_columns = []
+    elif isinstance(exclude_columns, str):
+        exclude_columns = [exclude_columns]
+    else:
+        exclude_columns = list(exclude_columns)
+
+    # Always exclude the label column if it exists
+    if label_column in df.columns and label_column not in exclude_columns:
+        exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Infer and sort spectral columns using shared utilities
     spectral_cols, wn_values = _infer_spectral_columns(
         df,
-        exclude_columns=exclude,
+        exclude_columns=exclude_columns,
         wn_min=wn_min,
         wn_max=wn_max
     )
@@ -661,6 +685,7 @@ def perform_umap_analysis(
 def perform_plsda_analysis(
         data: Union[pd.DataFrame, pl.DataFrame],
         label_column: str = "label",
+        sample_id_column: str = "sample_id",
         exclude_columns: Optional[List[str]] = None,
         wn_min: Optional[float] = None,
         wn_max: Optional[float] = None,
@@ -726,17 +751,24 @@ def perform_plsda_analysis(
     else:
         df = data.copy()
 
-    # Build exclusion list
-    exclude = [label_column] if label_column in df.columns else []
-    if "sample" in df.columns:
-        exclude.append("sample")
-    if exclude_columns:
-        exclude.extend(exclude_columns)
+    # Prepare exclude_columns list
+    if exclude_columns is None:
+        exclude_columns = []
+    elif isinstance(exclude_columns, str):
+        exclude_columns = [exclude_columns]
+    else:
+        exclude_columns = list(exclude_columns)
+
+    # Always exclude the label column if it exists
+    if label_column in df.columns and label_column not in exclude_columns:
+        exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Infer and sort spectral columns using shared utilities
     spectral_cols, wn_values = _infer_spectral_columns(
         df,
-        exclude_columns=exclude,
+        exclude_columns=exclude_columns,
         wn_min=wn_min,
         wn_max=wn_max
     )
@@ -923,6 +955,7 @@ def perform_plsda_analysis(
 def perform_oplsda_analysis(
         data: Union[pd.DataFrame, pl.DataFrame],
         label_column: str = "label",
+        sample_id_column: str = "sample_id",
         exclude_columns: Optional[List[str]] = None,
         wn_min: Optional[float] = None,
         wn_max: Optional[float] = None,
@@ -992,17 +1025,24 @@ def perform_oplsda_analysis(
     else:
         df = data.copy()
 
-    # Build exclusion list
-    exclude = [label_column] if label_column in df.columns else []
-    if "sample" in df.columns:
-        exclude.append("sample")
-    if exclude_columns:
-        exclude.extend(exclude_columns)
+    # Prepare exclude_columns list
+    if exclude_columns is None:
+        exclude_columns = []
+    elif isinstance(exclude_columns, str):
+        exclude_columns = [exclude_columns]
+    else:
+        exclude_columns = list(exclude_columns)
+
+    # Always exclude the label column if it exists
+    if label_column in df.columns and label_column not in exclude_columns:
+        exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Infer and sort spectral columns using shared utilities
     spectral_cols, wn_values = _infer_spectral_columns(
         df,
-        exclude_columns=exclude,
+        exclude_columns=exclude_columns,
         wn_min=wn_min,
         wn_max=wn_max
     )

@@ -445,6 +445,7 @@ def resample_spectra(
     descending: bool = True,
     method: InterpolationMethod = "linear",
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     show_progress: bool = True,
     n_jobs: int = 1,
@@ -567,6 +568,8 @@ def resample_spectra(
     # Always exclude the label column if it exists
     if label_column in df.columns and label_column not in exclude_columns:
         exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Identify spectral columns by parsing column names as wavenumbers
     numeric_cols, wavenumbers = _infer_spectral_columns(df, exclude_columns, wn_min=None, wn_max=None)
@@ -710,6 +713,7 @@ def combine_datasets(
     descending: bool = True,
     method: InterpolationMethod = "pchip",
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     add_study_column: bool = True,
     study_names: Optional[List[str]] = None,
@@ -897,6 +901,8 @@ def combine_datasets(
         exc_cols = list(exclude_columns) if exclude_columns else []
         if label_column in df.columns and label_column not in exc_cols:
             exc_cols.append(label_column)
+        if sample_id_column in df.columns and sample_id_column not in exc_cols:
+            exc_cols.append(sample_id_column)
 
         try:
             numeric_cols, wn = _infer_spectral_columns(df, exc_cols, wn_min=None, wn_max=None)
@@ -1014,6 +1020,8 @@ def combine_datasets(
         exc_cols = list(exclude_columns) if exclude_columns else []
         if label_column in df.columns and label_column not in exc_cols:
             exc_cols.append(label_column)
+        if sample_id_column in df.columns and sample_id_column not in exc_cols:
+            exc_cols.append(sample_id_column)
 
         try:
             _, wn = _infer_spectral_columns(df, exc_cols, wn_min=None, wn_max=None)
@@ -1053,6 +1061,7 @@ def combine_datasets(
             descending=descending,
             method=method,
             label_column=label_column,
+            sample_id_column=sample_id_column,
             exclude_columns=exclude_columns,
             show_progress=show_progress,
             n_jobs=n_jobs,
@@ -1134,6 +1143,7 @@ def _is_numeric_string(s: str) -> bool:
 def auto_detect_common_grid(
     datasets: List[Union[pd.DataFrame, "pl.DataFrame"]],
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     grid_mode: Literal["intersection", "union"] = "intersection",
 ) -> Tuple[float, float, int]:
@@ -1186,6 +1196,8 @@ def auto_detect_common_grid(
         exc_cols = list(exclude_columns) if exclude_columns else []
         if label_column in df.columns and label_column not in exc_cols:
             exc_cols.append(label_column)
+        if sample_id_column in df.columns and sample_id_column not in exc_cols:
+            exc_cols.append(sample_id_column)
 
         try:
             numeric_cols, wn = _infer_spectral_columns(df, exc_cols, wn_min=None, wn_max=None)

@@ -406,6 +406,7 @@ def evaluate_norm_methods(
     methods: Optional[Sequence[str]] = None,
     method_kwargs_map: Optional[Dict[str, Dict[str, Any]]] = None,
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -487,9 +488,13 @@ def evaluate_norm_methods(
     method_kwargs_map = method_kwargs_map or {}
 
     # Build list of columns to exclude from spectral data
-    meta_columns = [label_column]
+    meta_columns = []
     if exclude_columns is not None:
         meta_columns.extend(exclude_columns)
+    if label_column in df.columns and label_column not in meta_columns:
+        meta_columns.append(sample_id_column)
+    if sample_id_column in df.columns and sample_id_column not in meta_columns:
+        meta_columns.append(sample_id_column)
 
     # Use label column for within-class SAM calculation
     # No GroupKFold - always use StratifiedKFold for consistency with other modules

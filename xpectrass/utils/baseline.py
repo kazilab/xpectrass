@@ -232,6 +232,7 @@ def apply_baseline_correction(
     data: Union[pd.DataFrame, "pl.DataFrame"],
     method: str = "airpls",
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -363,6 +364,8 @@ def apply_baseline_correction(
     # Always exclude the label column if it exists
     if label_column in df.columns and label_column not in exclude_columns:
         exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Identify spectral columns by parsing column names as wavenumbers
     numeric_cols, wavenumbers = _infer_spectral_columns(df, exclude_columns, wn_min, wn_max)
@@ -802,6 +805,7 @@ def evaluate_baseline_correction_methods(
     data: Union[pd.DataFrame, "pl.DataFrame"],
     flat_windows: List[Tuple[float, float]],
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -918,6 +922,8 @@ def evaluate_baseline_correction_methods(
     # Always exclude the label column if it exists
     if label_column in df.columns and label_column not in exclude_columns:
         exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Identify spectral columns by parsing column names as wavenumbers
     numeric_cols, wavenumbers = _infer_spectral_columns(df, exclude_columns, wn_min, wn_max)

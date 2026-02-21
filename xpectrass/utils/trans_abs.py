@@ -13,7 +13,8 @@ from .spectral_utils import (
 def convert_spectra(
     data: Union[pd.DataFrame, pl.DataFrame],
     mode: str = "auto",
-    label_column: str = "label",
+    label_column: str = "type",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -35,8 +36,10 @@ def convert_spectra(
         - "to_absorbance" or "t2a": Convert %Transmittance to Absorbance
         - "to_transmittance" or "a2t": Convert Absorbance to %Transmittance
         - "auto": Automatically detect data type and convert to the opposite format
-    label_column : str, default "label"
+    label_column : str, default "type"
         Name of the label/group column to exclude from conversion.
+    sample_id_column: str, deafult "sample_id"
+        Name of the sample id/name column
     exclude_columns : list[str], optional
         Additional column names to exclude from conversion (e.g., 'sample', 'id').
         If None, automatically excludes non-numeric columns.
@@ -102,6 +105,7 @@ def convert_spectra(
         detected_type = _detect_data_type(
             data,
             label_column=label_column,
+            sample_id_column=sample_id_column,
             exclude_columns=exclude_columns,
             wn_min=wn_min,
             wn_max=wn_max
@@ -113,8 +117,44 @@ def convert_spectra(
             conversion_type = "to_transmittance"
             print(f"Auto-detected: Absorbance → Converting to Transmittance")
     elif mode in ["to_absorbance", "t2a", "transmittance_to_absorbance", "trans_to_abs"]:
+        # Check if data is already absorbance
+        detected_type = _detect_data_type(
+            data,
+            label_column=label_column,
+            sample_id_column=sample_id_column,
+            exclude_columns=exclude_columns,
+            wn_min=wn_min,
+            wn_max=wn_max
+        )
+        if detected_type == "absorbance":
+            import warnings
+            warnings.warn(
+                "Data appears to already be in absorbance format. "
+                "Conversion to absorbance skipped. Use mode='auto' for automatic detection, "
+                "or verify your data if you believe this is incorrect.",
+                UserWarning
+            )
+            return data.copy() if isinstance(data, pd.DataFrame) else data.clone()
         conversion_type = "to_absorbance"
     elif mode in ["to_transmittance", "a2t", "absorbance_to_transmittance", "abs_to_trans"]:
+        # Check if data is already transmittance
+        detected_type = _detect_data_type(
+            data,
+            label_column=label_column,
+            sample_id_column=sample_id_column,
+            exclude_columns=exclude_columns,
+            wn_min=wn_min,
+            wn_max=wn_max
+        )
+        if detected_type == "transmittance":
+            import warnings
+            warnings.warn(
+                "Data appears to already be in transmittance format. "
+                "Conversion to transmittance skipped. Use mode='auto' for automatic detection, "
+                "or verify your data if you believe this is incorrect.",
+                UserWarning
+            )
+            return data.copy() if isinstance(data, pd.DataFrame) else data.clone()
         conversion_type = "to_transmittance"
     else:
         raise ValueError(
@@ -133,6 +173,8 @@ def convert_spectra(
     # --- Identify and sort spectral columns using shared utilities -----------
     # Build exclusion list
     exclude = [label_column] if label_column in df.columns else []
+    if sample_id_column:
+        exclude.append(sample_id_column)
     if exclude_columns:
         if isinstance(exclude_columns, str):
             exclude.append(exclude_columns)
@@ -219,6 +261,7 @@ def convert_spectra(
 def _detect_data_type(
     data: Union[pd.DataFrame, pl.DataFrame],
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -260,6 +303,8 @@ def _detect_data_type(
 
     # Build exclusion list
     exclude = [label_column] if label_column in df.columns else []
+    if sample_id_column:
+        exclude.append(sample_id_column)
     if exclude_columns:
         if isinstance(exclude_columns, str):
             exclude.append(exclude_columns)

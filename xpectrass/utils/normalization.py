@@ -418,6 +418,7 @@ def normalize_df(
     data: Union[pd.DataFrame, pl.DataFrame, np.ndarray],
     method: str = "snv",
     label_column: str = "label",
+    sample_id_column: str = "sample_id",
     exclude_columns: Optional[List[str]] = None,
     wn_min: Optional[float] = None,
     wn_max: Optional[float] = None,
@@ -544,6 +545,8 @@ def normalize_df(
     # Always exclude the label column if it exists
     if label_column in df.columns and label_column not in exclude_columns:
         exclude_columns.append(label_column)
+    if sample_id_column in df.columns and sample_id_column not in exclude_columns:
+        exclude_columns.append(sample_id_column)
 
     # Use spectral_utils to infer and sort spectral columns
     numeric_cols, wavenumbers = _infer_spectral_columns(
@@ -1019,66 +1022,8 @@ spectral physics, robust statistics, and information-theoretic principles.
 """
 
 
-
-
 # ---------------------------------------------------------------------------
-#  1. ROBUST SNV (RSNV) - Median/MAD-based SNV
-# ---------------------------------------------------------------------------
-
-def normalize_robust_snv(y: np.ndarray, consistency_correction: bool = True, epsilon: float = 1e-10) -> np.ndarray:
-    """
-    Robust Standard Normal Variate using median and MAD.
-
-    Traditional SNV uses mean and std, which are sensitive to:
-    - Baseline artifacts (shifts the mean)
-    - Outlier peaks (inflates std)
-    - Asymmetric intensity distributions
-
-    RSNV uses median (robust center) and MAD (robust scale).
-
-    Formula: (x - median(x)) / MAD(x)
-
-    Parameters
-    ----------
-    y : np.ndarray
-        1-D spectrum.
-    consistency_correction : bool, default True
-        If True, scale MAD by 1.4826 to be consistent with std for normal data.
-    epsilon : float, default 1e-10
-        Small value added to MAD to avoid division by zero and prevent
-        zero vectors (which cause issues with cosine-based methods).
-
-    Returns
-    -------
-    np.ndarray
-        Robustly normalized spectrum.
-
-    Reference
-    ---------
-    Novel method - combines robust statistics with scatter correction.
-
-    Notes
-    -----
-    When MAD is very small or zero (flat spectrum), epsilon prevents
-    returning a zero vector, which would cause errors in downstream
-    methods that use cosine similarity (e.g., clustering, PCA with
-    cosine kernel).
-    """
-    median = np.median(y)
-    mad = np.median(np.abs(y - median))
-
-    if consistency_correction:
-        mad *= 1.4826  # Makes MAD consistent with std for normal distribution
-
-    # Add epsilon to prevent zero division and zero vectors
-    # This ensures compatibility with cosine-based methods
-    mad = max(mad, epsilon)
-
-    return (y - median) / mad
-
-
-# ---------------------------------------------------------------------------
-#  2. CURVATURE-WEIGHTED NORMALIZATION
+#  1. CURVATURE-WEIGHTED NORMALIZATION
 # ---------------------------------------------------------------------------
 
 def normalize_curvature_weighted(
@@ -1140,7 +1085,7 @@ def normalize_curvature_weighted(
 
 
 # ---------------------------------------------------------------------------
-#  3. PEAK-ENVELOPE NORMALIZATION
+#  2. PEAK-ENVELOPE NORMALIZATION
 # ---------------------------------------------------------------------------
 
 def normalize_peak_envelope(
@@ -1205,7 +1150,7 @@ def normalize_peak_envelope(
 
 
 # ---------------------------------------------------------------------------
-#  4. ENTROPY-WEIGHTED NORMALIZATION
+#  3. ENTROPY-WEIGHTED NORMALIZATION
 # ---------------------------------------------------------------------------
 
 def normalize_entropy_weighted(
@@ -1269,7 +1214,337 @@ def normalize_entropy_weighted(
 
 
 # ---------------------------------------------------------------------------
-#  5. PROBABILISTIC QUOTIENT NORMALIZATION (PQN)
+#  4. TOTAL VARIATION NORMALIZATION
+# ---------------------------------------------------------------------------
+
+def normalize_total_variation(
+    y: np.ndarray,
+    order: int = 1
+) -> np.ndarray:
+    """
+    Normalize by total variation (sum of absolute differences).
+    
+    Physical motivation: Total variation captures the "roughness" or
+    total signal content independent of baseline offset. It's related
+    to the first derivative energy and is baseline-invariant.
+    
+    TV = sum(|y[i+1] - y[i]|) for first order
+    
+    Parameters
+    ----------
+    y : np.ndarray
+        1-D spectrum.
+    order : int, default 1
+        Order of differences (1 = first derivative, 2 = second derivative).
+    
+    Returns
+    -------
+    np.ndarray
+        TV-normalized spectrum.
+    """
+    diff = y.copy()
+    for _ in range(order):
+        diff = np.diff(diff)
+    
+    tv = np.sum(np.abs(diff))
+    
+    if tv == 0:
+        return np.zeros_like(y)
+    
+    return y / tv
+
+
+# ---------------------------------------------------------------------------
+#  5. SPECTRAL MOMENT NORMALIZATION
+# ---------------------------------------------------------------------------
+
+def normalize_spectral_moments(
+    y: np.ndarray,
+    moment_order: int = 2,
+    use_central: bool = True
+) -> np.ndarray:
+    """
+    Normalize using spectral moments.
+    
+    Physical motivation: Higher-order moments capture distribution
+    characteristics beyond simple mean/variance. The nth moment
+    emphasizes larger deviations, useful for peak-rich spectra.
+    
+    Parameters
+    ----------
+    y : np.ndarray
+        1-D spectrum.
+    moment_order : int, default 2
+        Order of moment to use (2 = variance-like, 3 = skewness-like, etc.)
+    use_central : bool, default True
+        If True, use central moments (subtract mean first).
+    
+    Returns
+    -------
+    np.ndarray
+        Moment-normalized spectrum.
+    """
+    if use_central:
+        y_centered = y - np.mean(y)
+    else:
+        y_centered = y
+    
+    # Compute nth moment
+    moment = np.mean(np.abs(y_centered) ** moment_order) ** (1.0 / moment_order)
+    
+    if moment == 0:
+        return np.zeros_like(y)
+    
+    if use_central:
+        return y_centered / moment
+    return y / moment
+
+
+# ---------------------------------------------------------------------------
+#  6. ADAPTIVE REGIONAL NORMALIZATION
+# ---------------------------------------------------------------------------
+
+def normalize_adaptive_regional(
+    y: np.ndarray,
+    wavenumbers: Optional[np.ndarray],
+    regions: Optional[list] = None,
+    method_per_region: Optional[dict] = None
+) -> np.ndarray:
+    """
+    Apply different normalization to different spectral regions.
+
+    Physical motivation: Different FT-IR regions have different
+    characteristics:
+    - 3600-2800 cm⁻¹: O-H, N-H, C-H stretching (often intense)
+    - 1800-1500 cm⁻¹: C=O, C=C, amide bands
+    - 1500-400 cm⁻¹: Fingerprint region (complex)
+
+    Each region may benefit from different normalization.
+
+    Parameters
+    ----------
+    y : np.ndarray
+        1-D spectrum.
+    wavenumbers : np.ndarray, optional
+        Wavenumber axis. Required for this method.
+    regions : list of tuples, optional
+        [(start1, end1), (start2, end2), ...] defining regions.
+        Default: standard FT-IR regions.
+    method_per_region : dict, optional
+        {"region_idx": "method_name"} mapping.
+        Default: SNV for all regions.
+
+    Returns
+    -------
+    np.ndarray
+        Regionally-normalized spectrum.
+
+    Raises
+    ------
+    ValueError
+        If wavenumbers is None.
+    """
+    if wavenumbers is None:
+        raise ValueError(
+            "adaptive_regional normalization requires wavenumbers array. "
+            "Provide wavenumbers to normalize() function."
+        )
+
+    if len(wavenumbers) != len(y):
+        raise ValueError(
+            f"Length mismatch: wavenumbers has {len(wavenumbers)} elements "
+            f"but spectrum has {len(y)} elements."
+        )
+
+    if regions is None:
+        # Default FT-IR regions
+        regions = [
+            (3600, 2800),  # X-H stretching
+            (1800, 1500),  # Double bonds
+            (1500, 400),   # Fingerprint
+        ]
+    
+    if method_per_region is None:
+        method_per_region = {i: "snv" for i in range(len(regions))}
+    
+    y_normalized = y.copy()
+    
+    for i, (start, end) in enumerate(regions):
+        mask = (wavenumbers >= min(start, end)) & (wavenumbers <= max(start, end))
+        
+        if not np.any(mask):
+            continue
+        
+        region_data = y[mask]
+        method = method_per_region.get(i, "snv")
+        
+        if method == "snv":
+            mean, std = np.mean(region_data), np.std(region_data)
+            if std > 0:
+                y_normalized[mask] = (region_data - mean) / std
+        elif method == "minmax":
+            rmin, rmax = np.min(region_data), np.max(region_data)
+            if rmax > rmin:
+                y_normalized[mask] = (region_data - rmin) / (rmax - rmin)
+        elif method == "robust":
+            y_normalized[mask] = normalize_robust_snv(region_data)
+    
+    return y_normalized
+
+
+# ---------------------------------------------------------------------------
+#  7. DERIVATIVE RATIO NORMALIZATION
+# ---------------------------------------------------------------------------
+
+def normalize_derivative_ratio(
+    y: np.ndarray,
+    sigma: float = 2.0
+) -> np.ndarray:
+    """
+    Normalize using the ratio of derivative energies.
+    
+    Physical motivation: The ratio of second to first derivative
+    energy characterizes peak sharpness independent of intensity.
+    This provides baseline-independent normalization.
+    
+    Parameters
+    ----------
+    y : np.ndarray
+        1-D spectrum.
+    sigma : float
+        Smoothing parameter before derivative computation.
+    
+    Returns
+    -------
+    np.ndarray
+        Derivative-ratio normalized spectrum.
+    """
+    y_smooth = ndimage.gaussian_filter1d(y, sigma=sigma)
+    
+    d1 = np.gradient(y_smooth)
+    d2 = np.gradient(d1)
+    
+    # Energy of derivatives
+    e1 = np.sqrt(np.mean(d1**2))
+    e2 = np.sqrt(np.mean(d2**2))
+    
+    # Combined normalization factor
+    if e1 == 0:
+        return np.zeros_like(y)
+    
+    # Use geometric mean of derivative energies
+    norm_factor = np.sqrt(e1 * e2) if e2 > 0 else e1
+    
+    return y / norm_factor
+
+
+# ---------------------------------------------------------------------------
+#  8. SIGNAL-TO-BASELINE RATIO NORMALIZATION
+# ---------------------------------------------------------------------------
+
+def normalize_signal_to_baseline(
+    y: np.ndarray,
+    baseline_percentile: float = 10,
+    signal_percentile: float = 90
+) -> np.ndarray:
+    """
+    Normalize by the ratio of signal to baseline levels.
+    
+    Physical motivation: This separates the "signal" (peaks) from
+    "baseline" (background) and normalizes by their contrast. Useful
+    when baseline levels vary between samples.
+    
+    Parameters
+    ----------
+    y : np.ndarray
+        1-D spectrum.
+    baseline_percentile : float
+        Percentile to estimate baseline level.
+    signal_percentile : float
+        Percentile to estimate signal level.
+    
+    Returns
+    -------
+    np.ndarray
+        Signal-to-baseline normalized spectrum.
+    """
+    baseline_level = np.percentile(y, baseline_percentile)
+    signal_level = np.percentile(y, signal_percentile)
+    
+    contrast = signal_level - baseline_level
+    
+    if contrast <= 0:
+        return np.zeros_like(y)
+    
+    # Shift to baseline and normalize by contrast
+    return (y - baseline_level) / contrast
+
+
+# ---------------------------------------------------------------------------
+#  Other methods - modified from original
+# ---------------------------------------------------------------------------
+
+
+
+
+# ---------------------------------------------------------------------------
+#  1. ROBUST SNV (RSNV) - Median/MAD-based SNV
+# ---------------------------------------------------------------------------
+
+def normalize_robust_snv(y: np.ndarray, consistency_correction: bool = True, epsilon: float = 1e-10) -> np.ndarray:
+    """
+    Robust Standard Normal Variate using median and MAD.
+
+    Traditional SNV uses mean and std, which are sensitive to:
+    - Baseline artifacts (shifts the mean)
+    - Outlier peaks (inflates std)
+    - Asymmetric intensity distributions
+
+    RSNV uses median (robust center) and MAD (robust scale).
+
+    Formula: (x - median(x)) / MAD(x)
+
+    Parameters
+    ----------
+    y : np.ndarray
+        1-D spectrum.
+    consistency_correction : bool, default True
+        If True, scale MAD by 1.4826 to be consistent with std for normal data.
+    epsilon : float, default 1e-10
+        Small value added to MAD to avoid division by zero and prevent
+        zero vectors (which cause issues with cosine-based methods).
+
+    Returns
+    -------
+    np.ndarray
+        Robustly normalized spectrum.
+
+    Reference
+    ---------
+    Novel method - combines robust statistics with scatter correction.
+
+    Notes
+    -----
+    When MAD is very small or zero (flat spectrum), epsilon prevents
+    returning a zero vector, which would cause errors in downstream
+    methods that use cosine similarity (e.g., clustering, PCA with
+    cosine kernel).
+    """
+    median = np.median(y)
+    mad = np.median(np.abs(y - median))
+
+    if consistency_correction:
+        mad *= 1.4826  # Makes MAD consistent with std for normal distribution
+
+    # Add epsilon to prevent zero division and zero vectors
+    # This ensures compatibility with cosine-based methods
+    mad = max(mad, epsilon)
+
+    return (y - median) / mad
+
+
+# ---------------------------------------------------------------------------
+#  2. PROBABILISTIC QUOTIENT NORMALIZATION (PQN)
 # ---------------------------------------------------------------------------
 
 def normalize_pqn(
@@ -1377,273 +1652,6 @@ def normalize_pqn(
 
 
 # ---------------------------------------------------------------------------
-#  6. TOTAL VARIATION NORMALIZATION
-# ---------------------------------------------------------------------------
-
-def normalize_total_variation(
-    y: np.ndarray,
-    order: int = 1
-) -> np.ndarray:
-    """
-    Normalize by total variation (sum of absolute differences).
-    
-    Physical motivation: Total variation captures the "roughness" or
-    total signal content independent of baseline offset. It's related
-    to the first derivative energy and is baseline-invariant.
-    
-    TV = sum(|y[i+1] - y[i]|) for first order
-    
-    Parameters
-    ----------
-    y : np.ndarray
-        1-D spectrum.
-    order : int, default 1
-        Order of differences (1 = first derivative, 2 = second derivative).
-    
-    Returns
-    -------
-    np.ndarray
-        TV-normalized spectrum.
-    """
-    diff = y.copy()
-    for _ in range(order):
-        diff = np.diff(diff)
-    
-    tv = np.sum(np.abs(diff))
-    
-    if tv == 0:
-        return np.zeros_like(y)
-    
-    return y / tv
-
-
-# ---------------------------------------------------------------------------
-#  7. SPECTRAL MOMENT NORMALIZATION
-# ---------------------------------------------------------------------------
-
-def normalize_spectral_moments(
-    y: np.ndarray,
-    moment_order: int = 2,
-    use_central: bool = True
-) -> np.ndarray:
-    """
-    Normalize using spectral moments.
-    
-    Physical motivation: Higher-order moments capture distribution
-    characteristics beyond simple mean/variance. The nth moment
-    emphasizes larger deviations, useful for peak-rich spectra.
-    
-    Parameters
-    ----------
-    y : np.ndarray
-        1-D spectrum.
-    moment_order : int, default 2
-        Order of moment to use (2 = variance-like, 3 = skewness-like, etc.)
-    use_central : bool, default True
-        If True, use central moments (subtract mean first).
-    
-    Returns
-    -------
-    np.ndarray
-        Moment-normalized spectrum.
-    """
-    if use_central:
-        y_centered = y - np.mean(y)
-    else:
-        y_centered = y
-    
-    # Compute nth moment
-    moment = np.mean(np.abs(y_centered) ** moment_order) ** (1.0 / moment_order)
-    
-    if moment == 0:
-        return np.zeros_like(y)
-    
-    if use_central:
-        return y_centered / moment
-    return y / moment
-
-
-# ---------------------------------------------------------------------------
-#  8. ADAPTIVE REGIONAL NORMALIZATION
-# ---------------------------------------------------------------------------
-
-def normalize_adaptive_regional(
-    y: np.ndarray,
-    wavenumbers: Optional[np.ndarray],
-    regions: Optional[list] = None,
-    method_per_region: Optional[dict] = None
-) -> np.ndarray:
-    """
-    Apply different normalization to different spectral regions.
-
-    Physical motivation: Different FT-IR regions have different
-    characteristics:
-    - 3600-2800 cm⁻¹: O-H, N-H, C-H stretching (often intense)
-    - 1800-1500 cm⁻¹: C=O, C=C, amide bands
-    - 1500-400 cm⁻¹: Fingerprint region (complex)
-
-    Each region may benefit from different normalization.
-
-    Parameters
-    ----------
-    y : np.ndarray
-        1-D spectrum.
-    wavenumbers : np.ndarray, optional
-        Wavenumber axis. Required for this method.
-    regions : list of tuples, optional
-        [(start1, end1), (start2, end2), ...] defining regions.
-        Default: standard FT-IR regions.
-    method_per_region : dict, optional
-        {"region_idx": "method_name"} mapping.
-        Default: SNV for all regions.
-
-    Returns
-    -------
-    np.ndarray
-        Regionally-normalized spectrum.
-
-    Raises
-    ------
-    ValueError
-        If wavenumbers is None.
-    """
-    if wavenumbers is None:
-        raise ValueError(
-            "adaptive_regional normalization requires wavenumbers array. "
-            "Provide wavenumbers to normalize() function."
-        )
-
-    if len(wavenumbers) != len(y):
-        raise ValueError(
-            f"Length mismatch: wavenumbers has {len(wavenumbers)} elements "
-            f"but spectrum has {len(y)} elements."
-        )
-
-    if regions is None:
-        # Default FT-IR regions
-        regions = [
-            (3600, 2800),  # X-H stretching
-            (1800, 1500),  # Double bonds
-            (1500, 400),   # Fingerprint
-        ]
-    
-    if method_per_region is None:
-        method_per_region = {i: "snv" for i in range(len(regions))}
-    
-    y_normalized = y.copy()
-    
-    for i, (start, end) in enumerate(regions):
-        mask = (wavenumbers >= min(start, end)) & (wavenumbers <= max(start, end))
-        
-        if not np.any(mask):
-            continue
-        
-        region_data = y[mask]
-        method = method_per_region.get(i, "snv")
-        
-        if method == "snv":
-            mean, std = np.mean(region_data), np.std(region_data)
-            if std > 0:
-                y_normalized[mask] = (region_data - mean) / std
-        elif method == "minmax":
-            rmin, rmax = np.min(region_data), np.max(region_data)
-            if rmax > rmin:
-                y_normalized[mask] = (region_data - rmin) / (rmax - rmin)
-        elif method == "robust":
-            y_normalized[mask] = normalize_robust_snv(region_data)
-    
-    return y_normalized
-
-
-# ---------------------------------------------------------------------------
-#  9. DERIVATIVE RATIO NORMALIZATION
-# ---------------------------------------------------------------------------
-
-def normalize_derivative_ratio(
-    y: np.ndarray,
-    sigma: float = 2.0
-) -> np.ndarray:
-    """
-    Normalize using the ratio of derivative energies.
-    
-    Physical motivation: The ratio of second to first derivative
-    energy characterizes peak sharpness independent of intensity.
-    This provides baseline-independent normalization.
-    
-    Parameters
-    ----------
-    y : np.ndarray
-        1-D spectrum.
-    sigma : float
-        Smoothing parameter before derivative computation.
-    
-    Returns
-    -------
-    np.ndarray
-        Derivative-ratio normalized spectrum.
-    """
-    y_smooth = ndimage.gaussian_filter1d(y, sigma=sigma)
-    
-    d1 = np.gradient(y_smooth)
-    d2 = np.gradient(d1)
-    
-    # Energy of derivatives
-    e1 = np.sqrt(np.mean(d1**2))
-    e2 = np.sqrt(np.mean(d2**2))
-    
-    # Combined normalization factor
-    if e1 == 0:
-        return np.zeros_like(y)
-    
-    # Use geometric mean of derivative energies
-    norm_factor = np.sqrt(e1 * e2) if e2 > 0 else e1
-    
-    return y / norm_factor
-
-
-# ---------------------------------------------------------------------------
-#  10. SIGNAL-TO-BASELINE RATIO NORMALIZATION
-# ---------------------------------------------------------------------------
-
-def normalize_signal_to_baseline(
-    y: np.ndarray,
-    baseline_percentile: float = 10,
-    signal_percentile: float = 90
-) -> np.ndarray:
-    """
-    Normalize by the ratio of signal to baseline levels.
-    
-    Physical motivation: This separates the "signal" (peaks) from
-    "baseline" (background) and normalizes by their contrast. Useful
-    when baseline levels vary between samples.
-    
-    Parameters
-    ----------
-    y : np.ndarray
-        1-D spectrum.
-    baseline_percentile : float
-        Percentile to estimate baseline level.
-    signal_percentile : float
-        Percentile to estimate signal level.
-    
-    Returns
-    -------
-    np.ndarray
-        Signal-to-baseline normalized spectrum.
-    """
-    baseline_level = np.percentile(y, baseline_percentile)
-    signal_level = np.percentile(y, signal_percentile)
-    
-    contrast = signal_level - baseline_level
-    
-    if contrast <= 0:
-        return np.zeros_like(y)
-    
-    # Shift to baseline and normalize by contrast
-    return (y - baseline_level) / contrast
-
-
-# ---------------------------------------------------------------------------
 #  CONVENIENCE FUNCTION
 # ---------------------------------------------------------------------------
 
@@ -1671,11 +1679,9 @@ def normalize_novel(
         Normalized spectrum.
     """
     methods = {
-        'robust_snv': normalize_robust_snv,
         'curvature': normalize_curvature_weighted,
         'envelope': normalize_peak_envelope,
         'entropy': normalize_entropy_weighted,
-        'pqn': normalize_pqn,
         'total_variation': normalize_total_variation,
         'moments': normalize_spectral_moments,
         'derivative_ratio': normalize_derivative_ratio,
@@ -1691,7 +1697,7 @@ def normalize_novel(
 def novel_normalize_method_names() -> list:
     """Return list of novel normalization method names."""
     return [
-        'robust_snv', 'curvature', 'envelope', 'entropy',
-        'pqn', 'total_variation', 'moments', 'derivative_ratio',
+        'curvature', 'envelope', 'entropy',
+        'total_variation', 'moments', 'derivative_ratio',
         'signal_baseline'
     ]
